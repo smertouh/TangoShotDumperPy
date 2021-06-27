@@ -3,6 +3,7 @@ import logging
 
 import tango
 
+
 class PicoLog1000:
     class Channel:
         def __init__(self, device, channel_name):
@@ -95,7 +96,7 @@ class PicoLog1000:
                             pl = 1
                         dx = self.x_data[1] - self.x_data[0]
                         n1 = int((pv - self.x_data[0]) / dx)
-                        n2 = int((pv +  pl - self.x_data[0]) / dx)
+                        n2 = int((pv + pl - self.x_data[0]) / dx)
                         ml[pn] = self.attr.value[n1:n2].mean()
                     except:
                         ml[pn] = 0.0
@@ -211,7 +212,7 @@ class PicoLog1000:
         entry = chan.dev.folder + "/" + "param" + chan.name + ".txt"
         buf = "Signal_Name=%s/%s\r\n" % (chan.dev.get_name(), chan.name)
         buf += "Shot=%d\r\n" % chan.dev.shot
-        prop_list = ['%s=%s'%(k, chan.prop[k][0]) for k in chan.prop]
+        prop_list = ['%s=%s' % (k, chan.prop[k][0]) for k in chan.prop]
         for prop in prop_list:
             buf += "%s\r\n" % prop
         zip_file.writestr(entry, buf)
@@ -267,7 +268,7 @@ class PicoLog1000:
                 format = chan.get_prop('format')
                 if format is None or '' == format:
                     format = '%6.2f'
-                outstr = "; %s = "%mark_name + format%mark_value + " %s"%unit
+                outstr = "; %s = " % mark_name + format % mark_value + " %s" % unit
                 log_file.write(outstr)
         outstr = "; SHOT_TIME = %f" % self.read_shot_time()
         log_file.write(outstr)
