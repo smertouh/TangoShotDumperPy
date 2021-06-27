@@ -1,4 +1,3 @@
-import time
 import logging
 
 import tango
@@ -18,22 +17,23 @@ def config_logger(name: str = __name__, level: int = logging.DEBUG):
 
 
 class DumperDevice:
-    def __init__(self, tango_device_name, folder=None):
+    def __init__(self, tango_device_name: str, folder=''):
         self.logger = config_logger(name=__qualname__, level=logging.DEBUG)
         self.name = tango_device_name
-        if folder is None:
-            self.folder = tango_device_name
-        else:
-            self.folder = folder
+        self.folder = folder
         self.active = False
         self.tango_device = None
         self.tango_db = None
+        self.activate()
 
     def get_name(self):
         return self.name
 
     def __str__(self):
         return self.get_name()
+
+    def new_shot(self):
+        return False
 
     def activate(self):
         if not self.active:

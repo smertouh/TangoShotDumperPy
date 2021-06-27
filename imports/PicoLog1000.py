@@ -3,8 +3,10 @@ import logging
 
 import tango
 
+from imports.DumperDevice import DumperDevice
 
-class PicoLog1000:
+
+class PicoLog1000(DumperDevice):
     class Channel:
         def __init__(self, device, channel_name):
             self.dev = device
@@ -102,36 +104,10 @@ class PicoLog1000:
                         ml[pn] = 0.0
             return ml
 
-    def __init__(self, tango_device_name, avg=100, folder="PicoLog1000"):
-        self.name = tango_device_name
+    def __init__(self, tango_device_name, folder="PicoLog1000", avg=100):
+        super().__init__(tango_device_name, folder)
         self.avg = avg
-        self.folder = folder
-        self.logger = logging.getLogger()
-        self.active = False
-        self.tango_device = None
-        self.tango_db = None
         self.channels = []
-
-    def get_name(self):
-        return self.name
-
-    def activate(self):
-        if not self.active:
-            try:
-                self.tango_db = tango.Database()
-                self.tango_device = tango.DeviceProxy(self.get_name())
-                self.active = True
-                self.logger.debug("PicoLog1000 %s has been activated", self.get_name())
-            except:
-                self.active = False
-                self.logger.warning("PicoLoOg1000 %s activation error", self.get_name())
-        return self.active
-
-    def __str__(self):
-        return self.get_name()
-
-    def new_shot(self):
-        return False
 
     def save(self, log_file, zip_file):
         if not self.active:
@@ -152,9 +128,8 @@ class PicoLog1000:
             return
         trigger = self.tango_device.read_attribute("trigger")
         raw_data = self.tango_device.read_attribute("raw_data")
-        for c in self.channels:
+        for i, c in enumerate(self.channels):
             try:
-                index = self.channels.index(c)
                 y_name = 'chany%02i' % c
 
                 chan = PicoLog1000.Channel(self, c)
