@@ -7,152 +7,6 @@ from imports.DumperDevice import DumperDevice
 
 
 class PicoLog1000(DumperDevice):
-    class Channel:
-        def __init__(self, device, channel_name):
-            self.dev = device
-            if type(channel_name) is int:
-                self.name = 'chany%02i' % channel_name
-            else:
-                self.name = str(channel_name)
-            self.prop = None
-            self.index = None
-
-        def read_properties(self):
-            # Read signal properties
-            ap = self.dev.tango_db.get_device_attribute_property(self.dev.name, self.name)
-            self.prop = ap[self.name]
-            return self.prop
-
-        def read_data(self):
-            self.attr = self.dev.devProxy.read_attribute(self.name)
-            return self.attr.value
-
-        def read_x_data(self):
-            if not self.name.startswith('chany'):
-                if self.attr is None:
-                    self.read_data()
-                # Generate 1 increment array as x
-                self.x_data = numpy.arange(len(self.attr.value))
-            else:
-                self.x_data = self.dev.devProxy.read_attribute(self.name.replace('y', 'x')).value
-            return self.x_data
-
-        def get_prop_as_boolean(self, propName):
-            propVal = None
-            try:
-                propString = self.get_prop(propName).lower()
-                if propString == "true":
-                    propVal = True
-                elif propString == "on":
-                    propVal = True
-                elif propString == "1":
-                    propVal = True
-                elif propString == "y":
-                    propVal = True
-                elif propString == "yes":
-                    propVal = True
-                else:
-                    propVal = False
-                return propVal
-            except:
-                return propVal
-
-        def get_prop_as_int(self, propName):
-            try:
-                return int(self.get_prop(propName))
-            except:
-                return None
-
-        def get_prop_as_float(self, propName):
-            try:
-                return float(self.get_prop(propName))
-            except:
-                return None
-
-        def get_prop(self, propName):
-            try:
-                if self.prop is None:
-                    self.read_properties()
-                ps = self.prop[propName][0]
-                return ps
-            except:
-                return None
-
-        def get_marks(self):
-            if self.prop is None:
-                self.read_properties()
-            if self.attr is None:
-                self.read_data()
-            if self.x_data is None:
-                self.read_x_data()
-            ml = {}
-            for pk in self.prop:
-                if pk.endswith("_start"):
-                    pn = pk.replace("_start", "")
-                    try:
-                        pv = int(self.prop[pk][0])
-                        pln = pn + "_length"
-                        if pln in self.prop:
-                            pl = int(self.prop[pln][0])
-                        else:
-                            pl = 1
-                        dx = self.x_data[1] - self.x_data[0]
-                        n1 = int((pv - self.x_data[0]) / dx)
-                        n2 = int((pv + pl - self.x_data[0]) / dx)
-                        ml[pn] = self.attr.value[n1:n2].mean()
-                    except:
-                        ml[pn] = 0.0
-            return ml
-
-    def __init__(self, tango_device_name, folder="PicoLog1000", avg=100):
-        super().__init__(tango_device_name, folder)
-        self.avg = avg
-        self.channels = []
-
-    def save(self, log_file, zip_file):
-        if not self.active:
-            self.logger.debug('Reading inactive device')
-            return
-        ready = self.tango_device.read_attribute("data_ready")
-        if not ready:
-            self.logger.debug('Data not ready')
-            return
-        channels_str = self.tango_device.read_attribute("channels")
-        self.channels = []
-        try:
-            self.channels = eval(channels_str)
-        except:
-            pass
-        if len(self.channels) <= 0:
-            self.logger.debug('No data channels')
-            return
-        trigger = self.tango_device.read_attribute("trigger")
-        raw_data = self.tango_device.read_attribute("raw_data")
-        for i, c in enumerate(self.channels):
-            try:
-                y_name = 'chany%02i' % c
-
-                chan = PicoLog1000.Channel(self, c)
-                # Read save_data and save_log flags
-                sdf = chan.get_prop_as_boolean("save_data")
-                slf = chan.get_prop_as_boolean("save_log")
-                # Save signal properties
-                if sdf or slf:
-                    self.save_prop(zip_file, chan)
-                    chan.read_data()
-                    self.save_log(log_file, chan)
-                    if sdf:
-                        self.save_data(zip_file, chan)
-                break
-            except:
-                LOGGER.log(logging.WARNING, "Adlink %s data save exception" % self.get_name())
-                print_exception_info()
-                retry_count -= 1
-            if retry_count > 0:
-                LOGGER.log(logging.DEBUG, "Retry reading channel %s" % self.get_name())
-            if retry_count == 0:
-                LOGGER.log(logging.WARNING, "Error reading channel %s" % self.get_name())
-
     def read_shot(self):
         try:
             da = self.tango_device.read_attribute("Shot_id")
@@ -166,7 +20,7 @@ class PicoLog1000(DumperDevice):
             elapsed = self.tango_device.read_attribute('Elapsed')
             self.shot_time = time.time()
             if elapsed.quality != tango._tango.AttrQuality.ATTR_VALID:
-                LOGGER.info('Non Valid attribute %s %s' % (elapsed.name, elapsed.quality))
+                LOGGER.info('Non Valid attr_proxy %s %s' % (elapsed.name, elapsed.quality))
                 return -self.shot_time
             self.shot_time = self.shot_time - elapsed.value
             return self.shot_time
@@ -202,7 +56,7 @@ class PicoLog1000(DumperDevice):
         # Units
         unit = chan.get_prop('unit')
         # Calibration coefficient for conversion to units
-        coeff = chan.get_prop_as_float("display_unit")
+        coeff = chan.property_as_boolean("display_unit")
         if coeff is None or coeff == 0.0:
             coeff = 1.0
 

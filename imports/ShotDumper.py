@@ -278,7 +278,7 @@ class AdlinkADC:
             elapsed = self.devProxy.read_attribute('Elapsed')
             self.shot_time = time.time()
             if elapsed.quality != tango._tango.AttrQuality.ATTR_VALID:
-                LOGGER.info('Non Valid attribute %s %s' % (elapsed.name, elapsed.quality))
+                LOGGER.info('Non Valid attr_proxy %s %s' % (elapsed.name, elapsed.quality))
                 return -self.shot_time
             self.shot_time = self.shot_time - elapsed.value
             return self.shot_time
@@ -326,7 +326,7 @@ class AdlinkADC:
         # Units
         unit = chan.get_prop('unit')
         # Calibration coefficient for conversion to units
-        coeff = chan.get_prop_as_float("display_unit")
+        coeff = chan.property_as_boolean("display_unit")
         if coeff is None or coeff == 0.0:
             coeff = 1.0
 
@@ -665,7 +665,7 @@ class TangoAttribute:
                     avg = 1
                 buf = self.convert_to_buf(avg)
             else:
-                LOGGER.log(logging.WARNING, "Unsupported attribute format for %s" % self.get_name())
+                LOGGER.log(logging.WARNING, "Unsupported attr_proxy format for %s" % self.get_name())
                 return
             try:
                 info = zip_file.getinfo(entry)
@@ -682,7 +682,7 @@ class TangoAttribute:
 
     def save_prop(self, zip_file):
         entry = self.folder + "/" + "param" + self.label + ".txt"
-        buf = "attribute=%s\r\n" % self.get_name()
+        buf = "attr_proxy=%s\r\n" % self.get_name()
         for pr in self.prop:
             buf += '%s=%s\r\n' % (pr, self.prop[pr][0])
         try:
@@ -708,14 +708,14 @@ class TangoAttribute:
         # save_data and save_log flags
         self.sdf = self.get_prop_as_boolean("save_data")
         self.slf = self.get_prop_as_boolean("save_log")
-        # force save if requested during attribute creation
+        # force save if requested during attr_proxy creation
         if self.force:
             self.sdf = True
             self.slf = True
         # do not save if both flags are False
         if not (self.sdf or self.slf):
             return
-        # read attribute with retries
+        # read attr_proxy with retries
         rc = self.retry_count
         while rc > 0:
             try:
@@ -727,21 +727,21 @@ class TangoAttribute:
                 print_exception_info()
                 rc -= 1
         if rc == 0:
-            LOGGER.log(logging.WARNING, "Retry count exceeded reading attribute %s" % self.get_name())
+            LOGGER.log(logging.WARNING, "Retry count exceeded reading attr_proxy %s" % self.get_name())
             self.active = False
             self.time = time.time()
             return
 
         if self.attr.data_format == tango._tango.AttrDataFormat.SCALAR:
-            LOGGER.log(logging.DEBUG, "Scalar attribute %s" % self.name)
+            LOGGER.log(logging.DEBUG, "Scalar attr_proxy %s" % self.name)
         elif self.attr.data_format == tango._tango.AttrDataFormat.SPECTRUM:
-            LOGGER.log(logging.DEBUG, "SPECRUM attribute %s" % self.name)
+            LOGGER.log(logging.DEBUG, "SPECRUM attr_proxy %s" % self.name)
         else:
-            LOGGER.log(logging.WARNING, "Unsupported attribute format for %s" % self.name)
+            LOGGER.log(logging.WARNING, "Unsupported attr_proxy format for %s" % self.name)
             raise ValueError
 
-        # determine required attribute properties
-        # attribute label
+        # determine required attr_proxy properties
+        # attr_proxy label
         self.label = self.get_property('label')
         if self.label is None or '' == self.label:
             self.label = self.get_property('name')
