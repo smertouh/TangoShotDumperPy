@@ -1,31 +1,62 @@
 import time
 import logging
 
+import numpy
 import tango
 
-from imports.DumperDevice import DumperDevice
+from imports.DumperDevice import *
 
 
 class PicoLog1000(DumperDevice):
-    def read_shot(self):
-        try:
-            da = self.tango_device.read_attribute("Shot_id")
-            shot = da.value
-            return shot
-        except:
-            return -1
+    class Channel(DumperDevice.Channel):
+        pass
 
-    def read_shot_time(self):
+    def __init__(self, tango_device_name: str, folder='PicoLog'):
+        super().__init__(tango_device_name, folder)
+
+    def save(self, log_file, zip_file):
+        # read data ready
+        data_ready = self.tango_device.read_attribute('data_teady').value
+        if not data_ready:
+            self.logger.warning("%s data is not ready" % self.name)
+            return
+        # read raw data
+        raw_data = self.tango_device.read_attribute('raw_data').value
+        # read other attributes
+        trigger = self.tango_device.read_attribute('trigger').value
+        sampling = self.tango_device.read_attribute('sampling').value
+        points = self.tango_device.read_attribute('points_per_channel').value
+        # read channels list
+        channels = self.tango_device.read_attribute('channels').value
+        channels_list = []
         try:
-            elapsed = self.tango_device.read_attribute('Elapsed')
-            self.shot_time = time.time()
-            if elapsed.quality != tango._tango.AttrQuality.ATTR_VALID:
-                LOGGER.info('Non Valid attr_proxy %s %s' % (elapsed.name, elapsed.quality))
-                return -self.shot_time
-            self.shot_time = self.shot_time - elapsed.value
-            return self.shot_time
+            channels_list = eval(channels)
         except:
-            return -self.shot_time
+            pass
+
+        # generate times array
+        t = numpy.linspace(0, (points - 1) * sampling, points, dtype=numpy.float32)
+        times = numpy.empty(raw_data.shape, dtype=numpy.float32)
+        for i in range(len(channels)):
+            times[i, :] = t + (i * sampling / len(channels))
+
+        #attr_list = self.tango_device.get_attribute_list()
+        #prop_list = self.property_list()
+        for chan in channels_list:
+            try:
+                name = "chanel_%03i" % chan
+                prop = self.tango_device.get_property(name)[name]
+                sdf = "save_data" in prop
+                slf = "save_log" in prop
+                # save signal properties
+                if sdf or slf:
+                    self.save_prop(zip_file, chan)
+                    self.save_log(log_file, chan)
+                    if sdf:
+                        self.save_data(zip_file, chan)
+            except:
+                self.logger.warning("%s data save exception" % self.name)
+                self.logger.debug('', exc_info=True)
 
     def save_data(self, zip_file, chan):
         entry = chan.dev.folder + "/" + chan.name + ".txt"

@@ -3,19 +3,6 @@ import logging
 import tango
 
 
-def config_logger(name: str = __name__, level: int = logging.DEBUG):
-    logger = logging.getLogger(name)
-    if not logger.hasHandlers():
-        logger.propagate = False
-        logger.setLevel(level)
-        f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(log_formatter)
-        logger.addHandler(console_handler)
-    return logger
-
-
 class DumperDevice:
     class Channel:
         def __init__(self, device, channel, prefix='chan'):
@@ -29,7 +16,7 @@ class DumperDevice:
             self.x_name = self.y_name.replace('y', 'x')
             self.index = None
 
-        def read_y(self):
+        def read_data(self):
             self.y = self.attr_proxy.read()
             return self.y.value
 
@@ -76,15 +63,24 @@ class DumperDevice:
             return ml
 
     def __init__(self, tango_device_name: str, folder=''):
-        self.logger = config_logger(name=__qualname__, level=logging.DEBUG)
+        self.logger = self.config_logger(name=__qualname__, level=logging.DEBUG)
         self.name = tango_device_name
         self.folder = folder
         self.active = False
         self.tango_device = None
         self.activate()
 
-    def __str__(self):
-        return self.get_name()
+    def config_logger(self, name: str = __name__, level: int = logging.DEBUG):
+        logger = logging.getLogger(name)
+        if not logger.hasHandlers():
+            logger.propagate = False
+            logger.setLevel(level)
+            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
+            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(log_formatter)
+            logger.addHandler(console_handler)
+        return logger
 
     def new_shot(self):
         return False
@@ -92,13 +88,13 @@ class DumperDevice:
     def activate(self):
         if not self.active:
             try:
-                self.tango_device = tango.DeviceProxy(self.get_name())
+                self.tango_device = tango.DeviceProxy(self.name)
                 self.active = True
-                self.logger.debug("%s has been activated", self.get_name())
+                self.logger.debug("%s has been activated", self.name)
             except:
                 self.tango_device = None
                 self.active = False
-                self.logger.warning("%s activation error", self.get_name())
+                self.logger.warning("%s activation error", self.name)
         return self.active
 
     def save(self, log_file, zip_file):
@@ -107,32 +103,27 @@ class DumperDevice:
         #     self.logger.debug('Reading inactive device')
         #     return
 
+    def property(self, prop_name):
+        try:
+            return self.tango_device.get_property(prop_name)[prop_name][0]
+        except:
+            return ''
 
-def get_device_property(device_proxy, prop_name):
-    try:
-        return device_proxy.get_property(prop_name)[prop_name][0]
-    except:
-        return ''
+    def property_list(self, filter='*'):
+        return self.tango_device.get_property_list(filter)
 
+    TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
+    FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
 
-def get_device_property_list(device_proxy, fltr='*'):
-    return device_proxy.get_property_list(fltr)
-
-
-TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
-FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
-
-
-def as_boolean(value):
-    if value.lower() in TRUE_VALUES:
-        return True
-    if value.lower() in FALSE_VALUES:
-        return False
-    return None
-
-
-def as_int(value):
-    try:
-        return int(value)
-    except:
+    def as_boolean(self, value):
+        if value.lower() in DumperDevice.TRUE_VALUES:
+            return True
+        if value.lower() in DumperDevice.FALSE_VALUES:
+            return False
         return None
+
+    def as_int(self, value):
+        try:
+            return int(value)
+        except:
+            return None
