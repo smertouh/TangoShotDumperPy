@@ -39,7 +39,9 @@ class PicoLog1000(DumperDevice):
         times = numpy.empty(raw_data.shape, dtype=numpy.float32)
         for i in range(len(channels)):
             times[i, :] = t + (i * sampling / len(channels))
-
+        if trigger < len(times[0, :]):
+            trigger_offset = times[0, trigger]
+            times -= trigger_offset
         #attr_list = self.tango_device.get_attribute_list()
         #prop_list = self.property_list()
         for chan in channels_list:
