@@ -1,4 +1,4 @@
-from imports.DumperDevice import *
+from DumperDevice import *
 
 
 class PicoLog1000(DumperDevice):

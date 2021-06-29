@@ -6,67 +6,36 @@ Shot dumper tango device server
 A. L. Sanin, started 25.06.2021
 """
 
-import time
-import sys
 import logging
-
-import numpy
+import sys
+import time
+import json
 
 import tango
-from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
-from tango.server import Device, attribute, command, pipe, device_property
+from tango import DevState
+from tango.server import Device
 
 NaN = float('nan')
 
 
-def config_logger(name: str = __name__, level: int = logging.DEBUG):
-    logger = logging.getLogger(name)
-    if not logger.hasHandlers():
-        logger.propagate = False
-        logger.setLevel(level)
-        f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(log_formatter)
-        logger.addHandler(console_handler)
-    return logger
-
-
 class TangoShotDumperServer(Device):
     version = '1.0'
-    devices = []
-    from .imports import *
-
-    logger = config_logger(name=__qualname__, level=logging.DEBUG)
+    device_list = []
 
     def init_device(self):
-        if self not in TangoShotDumperServer.devices:
-            TangoShotDumperServer.devices.append(self)
-        self.picolog = None
-        self.device_type_str = "Unknown PicoLog device"
-        self.device_name = ''
-        self.device_proxy = None
-        self.channels_list = []
-        self.record_initiated = False
-        self.data_ready_value = False
-        self.init_result = None
-        self.points = 1000
-        self.record_us = 1000000
-        self.trigger_enabled = 0
-        self.trigger_auto = 0
-        self.trigger_auto_ms = 0
-        self.trigger_channel = 1
-        self.trigger_dir = 0
-        self.trigger_threshold = 2048
-        self.trigger_hysteresis = 100
-        self.trigger_delay = 10.0
+        # set default properties
+        self.logger = self.config_logger(name=__qualname__, level=logging.DEBUG)
+        # read config
         try:
             self.set_state(DevState.INIT)
-            self.device_name = self.get_name()
-            self.device_proxy = tango.DeviceProxy(self.device_name)
             # read config from device properties
             level = self.get_device_property('log_level', 10)
             self.logger.setLevel(level)
+            # read config from file
+            self.config_file = self.get_device_property('config_file', 'ShotDumperPy.json')
+            self.read_config(self.config_file)
+
+            devices = self.get_device_property('devices', '{}')
             # create PicoLog1000 device
             self.picolog = PicoLog1000()
             self.set_state(DevState.ON)
@@ -82,13 +51,14 @@ class TangoShotDumperServer(Device):
             # set trigger
             self.set_trigger()
             # OK message
-            self.init_result = None
             msg = '%s %s has been initialized' % (self.device_name, self.device_type_str)
             self.logger.info(msg)
             self.info_stream(msg)
             self.set_state(DevState.STANDBY)
+            # add device to the list
+            if self not in TangoShotDumperServer.devices:
+                TangoShotDumperServer.devices.append(self)
         except Exception as ex:
-            self.init_result = ex
             msg = '%s Exception initialing PicoLog: %s' % (self.device_name, sys.exc_info()[1])
             self.logger.error(msg)
             self.error_stream(msg)
@@ -108,6 +78,56 @@ class TangoShotDumperServer(Device):
         msg = '%s PicoLog has been deleted' % self.device_name
         self.logger.info(msg)
         self.info_stream(msg)
+
+    @staticmethod
+    def config_logger(name: str = __name__, level: int = logging.DEBUG):
+        logger = logging.getLogger(name)
+        if not logger.hasHandlers():
+            logger.propagate = False
+            logger.setLevel(level)
+            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
+            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(log_formatter)
+            logger.addHandler(console_handler)
+        return logger
+
+    def read_config(self, file_name):
+        try:
+            # Read config from file
+            with open(file_name, 'r') as configfile:
+                s = configfile.read()
+            self.config = json.loads(s)
+            # Restore log level
+            self.logger.setLevel(self.config.get('log_level', logging.DEBUG))
+            self.logger.log(logging.DEBUG, "Log level set to %d" % self.logger.level)
+            self.config["sleep"] = float(self.config.get("sleep", 1.0))
+            self.out_dir = self.config.get("out_dir", '.\\data\\')
+            self.shot = self.config.get('shot', 0)
+            # Restore devices
+            items = self.config.get("devices", [])
+            if len(items) <= 0:
+                self.logger.error("No devices declared")
+                return False
+            for unit in items:
+                try:
+                    if 'exec' in unit:
+                        exec(unit["exec"])
+                    if 'eval' in unit:
+                        item = eval(unit["eval"])
+                        self.devise_list.append(item)
+                        self.logger.info("%s has been added" % unit["eval"])
+                    else:
+                        self.logger.info("No 'eval' option for %s" % unit)
+                except:
+                    self.logger.warning("Error in %s initialization" % str(unit))
+                    self.logger.debug('', exc_info=True)
+            self.logger.info('Configuration restored from %s' % file_name)
+            return True
+        except:
+            self.logger.info('Configuration restore error from %s' % file_name)
+            self.logger.debug('', exc_info=True)
+            return False
 
 
 def looping():

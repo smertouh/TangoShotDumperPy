@@ -1,0 +1,16 @@
+{
+    "sleep": 2.0,
+    "log_level": 10,
+    "out_dir": "D:\\data\\",
+    "devices": [
+        {
+            "exec": "import PicLog100",
+            "eval": "PicLog100(dev='binp/nbi/adc0', avg=100, folder='ADC_0')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/lauda', '1012', folder='example')"
+        }
+    ],
+    "shot": 7340,
+    "shot_time": "2020-02-17 18:28:00"
+}
