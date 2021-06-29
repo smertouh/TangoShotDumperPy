@@ -278,7 +278,7 @@ class AdlinkADC:
             elapsed = self.devProxy.read_attribute('Elapsed')
             self.shot_time = time.time()
             if elapsed.quality != tango._tango.AttrQuality.ATTR_VALID:
-                LOGGER.info('Non Valid attr_proxy %s %s' % (elapsed.name, elapsed.quality))
+                LOGGER.info('Non Valid attribute %s %s' % (elapsed.name, elapsed.quality))
                 return -self.shot_time
             self.shot_time = self.shot_time - elapsed.value
             return self.shot_time
@@ -302,9 +302,9 @@ class AdlinkADC:
         avg = chan.get_prop_as_int("save_avg")
         if avg < 1:
             avg = 1
-        if chan.x_data is None or len(chan.x_data) != len(chan.attr.value):
-            chan.x_data = chan.read_x_data()
-        buf = convert_to_buf(chan.x_data, chan.attr.value, avg)
+        if chan.x is None or len(chan.x) != len(chan.attr.value):
+            chan.x = chan.read_x_data()
+        buf = convert_to_buf(chan.x, chan.attr.value, avg)
         zip_file.writestr(entry, buf)
 
     def save_prop(self, zip_file, chan):
@@ -393,7 +393,7 @@ class AdlinkADC:
                                 self.save_data(zip_file, chan)
                         break
                     except:
-                        LOGGER.log(logging.WARNING, "Adlink %s data save exception" % self.get_name())
+                        LOGGER.log(logging.WARNING, "Adlink %s y save exception" % self.get_name())
                         print_exception_info()
                         retry_count -= 1
                     if retry_count > 0:
@@ -665,7 +665,7 @@ class TangoAttribute:
                     avg = 1
                 buf = self.convert_to_buf(avg)
             else:
-                LOGGER.log(logging.WARNING, "Unsupported attr_proxy format for %s" % self.get_name())
+                LOGGER.log(logging.WARNING, "Unsupported attribute format for %s" % self.get_name())
                 return
             try:
                 info = zip_file.getinfo(entry)
@@ -678,11 +678,11 @@ class TangoAttribute:
                 pass
             zip_file.writestr(entry, buf)
         except:
-            LOGGER.log(logging.WARNING, "Attribute data save error for %s" % self.get_name())
+            LOGGER.log(logging.WARNING, "Attribute y save error for %s" % self.get_name())
 
     def save_prop(self, zip_file):
         entry = self.folder + "/" + "param" + self.label + ".txt"
-        buf = "attr_proxy=%s\r\n" % self.get_name()
+        buf = "attribute=%s\r\n" % self.get_name()
         for pr in self.prop:
             buf += '%s=%s\r\n' % (pr, self.prop[pr][0])
         try:
@@ -708,14 +708,14 @@ class TangoAttribute:
         # save_data and save_log flags
         self.sdf = self.get_prop_as_boolean("save_data")
         self.slf = self.get_prop_as_boolean("save_log")
-        # force save if requested during attr_proxy creation
+        # force save if requested during attribute creation
         if self.force:
             self.sdf = True
             self.slf = True
         # do not save if both flags are False
         if not (self.sdf or self.slf):
             return
-        # read attr_proxy with retries
+        # read attribute with retries
         rc = self.retry_count
         while rc > 0:
             try:
@@ -727,21 +727,21 @@ class TangoAttribute:
                 print_exception_info()
                 rc -= 1
         if rc == 0:
-            LOGGER.log(logging.WARNING, "Retry count exceeded reading attr_proxy %s" % self.get_name())
+            LOGGER.log(logging.WARNING, "Retry count exceeded reading attribute %s" % self.get_name())
             self.active = False
             self.time = time.time()
             return
 
         if self.attr.data_format == tango._tango.AttrDataFormat.SCALAR:
-            LOGGER.log(logging.DEBUG, "Scalar attr_proxy %s" % self.name)
+            LOGGER.log(logging.DEBUG, "Scalar attribute %s" % self.name)
         elif self.attr.data_format == tango._tango.AttrDataFormat.SPECTRUM:
-            LOGGER.log(logging.DEBUG, "SPECRUM attr_proxy %s" % self.name)
+            LOGGER.log(logging.DEBUG, "SPECRUM attribute %s" % self.name)
         else:
-            LOGGER.log(logging.WARNING, "Unsupported attr_proxy format for %s" % self.name)
+            LOGGER.log(logging.WARNING, "Unsupported attribute format for %s" % self.name)
             raise ValueError
 
-        # determine required attr_proxy properties
-        # attr_proxy label
+        # determine required attribute properties
+        # attribute label
         self.label = self.get_property('label')
         if self.label is None or '' == self.label:
             self.label = self.get_property('name')
@@ -772,13 +772,13 @@ class ShotDumper:
     def __init__(self):
         self.logger = LOGGER
         self.device_list = DEVICE_LIST
-        self.outFolder = ".\\data\\"
+        self.outFolder = ".\\y\\"
         self.lockFile = None
         self.locked = False
         self.shot = 0
         self.logFile = None
         self.zipFile = None
-        self.outRootDir = '.\\data\\'
+        self.outRootDir = '.\\y\\'
 
     def read_config(self, file_name=CONFIG_FILE_NAME):
         global CONFIG
@@ -792,7 +792,7 @@ class ShotDumper:
             LOGGER.setLevel(CONFIG.get('Loglevel', logging.DEBUG))
             LOGGER.log(logging.DEBUG, "Log level set to %d" % LOGGER.level)
             CONFIG["sleep"] = CONFIG.get("sleep", 1.0)
-            self.outRootDir = CONFIG.get("outDir", '.\\data\\')
+            self.outRootDir = CONFIG.get("outDir", '.\\y\\')
             self.shot = CONFIG.get('shot', 0)
             # Restore devices
             items = CONFIG.get("devices", [])
@@ -886,7 +886,7 @@ class ShotDumper:
                     try:
                         item.save(self.logFile, self.zipFile)
                     except:
-                        LOGGER.log(logging.WARNING, "Exception saving data from %s" % str(item))
+                        LOGGER.log(logging.WARNING, "Exception saving y from %s" % str(item))
                         print_exception_info()
                 self.zipFile.close()
                 zfn = os.path.basename(self.zipFile.filename)

@@ -15,12 +15,12 @@ class PicoLog1000(DumperDevice):
         super().__init__(tango_device_name, folder)
 
     def save(self, log_file, zip_file):
-        # read data ready
-        data_ready = self.tango_device.read_attribute('data_teady').value
+        # read y ready
+        data_ready = self.tango_device.read_attribute('data_ready').value
         if not data_ready:
-            self.logger.warning("%s data is not ready" % self.name)
+            self.logger.warning("%s y is not ready" % self.name)
             return
-        # read raw data
+        # read raw y
         raw_data = self.tango_device.read_attribute('raw_data').value
         # read other attributes
         trigger = self.tango_device.read_attribute('trigger').value
@@ -36,17 +36,17 @@ class PicoLog1000(DumperDevice):
 
         # generate times array
         t = numpy.linspace(0, (points - 1) * sampling, points, dtype=numpy.float32)
-        times = numpy.empty(raw_data.shape, dtype=numpy.float32)
-        for i in range(len(channels)):
-            times[i, :] = t + (i * sampling / len(channels))
-        if trigger < len(times[0, :]):
+        times = numpy.zeros(raw_data.shape, dtype=numpy.float32)
+        for i, chan in enumerate(channels_list):
+            times[i, :] = t + (i * sampling / len(channels_list))
+        if trigger < points:
             trigger_offset = times[0, trigger]
             times -= trigger_offset
         #attr_list = self.tango_device.get_attribute_list()
         #prop_list = self.property_list()
-        for chan in channels_list:
+        for i, chan in enumerate(channels_list):
             try:
-                name = "chanel_%03i" % chan
+                name = "channel_%03i" % chan
                 prop = self.tango_device.get_property(name)[name]
                 sdf = "save_data" in prop
                 slf = "save_log" in prop
@@ -57,7 +57,7 @@ class PicoLog1000(DumperDevice):
                     if sdf:
                         self.save_data(zip_file, chan)
             except:
-                self.logger.warning("%s data save exception" % self.name)
+                self.logger.warning("%s y save exception" % self.name)
                 self.logger.debug('', exc_info=True)
 
     def save_data(self, zip_file, chan):
@@ -65,9 +65,9 @@ class PicoLog1000(DumperDevice):
         avg = chan.get_prop_as_int("save_avg")
         if avg < 1:
             avg = 1
-        if chan.x_data is None or len(chan.x_data) != len(chan.attr.value):
-            chan.x_data = chan.read_x_data()
-        buf = convert_to_buf(chan.x_data, chan.attr.value, avg)
+        if chan.x is None or len(chan.x) != len(chan.attr.value):
+            chan.x = chan.read_x_data()
+        buf = convert_to_buf(chan.x, chan.attr.value, avg)
         zip_file.writestr(entry, buf)
 
     def save_prop(self, zip_file, chan):

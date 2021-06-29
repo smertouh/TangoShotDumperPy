@@ -120,13 +120,13 @@ def looping():
                     dev.picolog.read()
                     dev.record_initiated = False
                     dev.data_ready_value = True
-                    msg = '%s Recording finished, data is ready' % dev.device_name
+                    msg = '%s Recording finished, y is ready' % dev.device_name
                     dev.logger.info(msg)
                     dev.info_stream(msg)
             except:
                 dev.record_initiated = False
                 dev.data_ready_value = False
-                msg = '%s Reading data error' % dev.device_name
+                msg = '%s Reading y error' % dev.device_name
                 dev.logger.warning(msg)
                 dev.error_stream(msg)
                 dev.logger.debug('', exc_info=True)

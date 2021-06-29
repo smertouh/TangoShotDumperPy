@@ -1,66 +1,69 @@
 import logging
 
+import numpy
 import tango
 
 
 class DumperDevice:
     class Channel:
-        def __init__(self, device, channel, prefix='chan'):
-            self.dev = device
+        def __init__(self, device: tango.DeviceProxy, channel, prefix='channel_', format='%03i'):
+            self.device = device
             if type(channel) is int:
-                self.y_name = prefix + ('%02i' % channel)
+                self.name = prefix + (format % channel)
             else:
-                self.y_name = str(channel)
-            self.attr_proxy = tango.AttributeProxy(device.name + '/' + self.y_name)
+                self.name = str(channel)
             self.y = None
-            self.x_name = self.y_name.replace('y', 'x')
-            self.index = None
+            self.y_attr = None
+            self.x = None
+            self.x_attr = None
 
-        def read_data(self):
-            self.y = self.attr_proxy.read()
-            return self.y.value
+        def read_y(self):
+            self.y_attr = self.device.read_attribute(self.name)
+            self.y = self.y_attr.value
+            return self.y
 
         def read_x(self):
-            if not self.name.startswith('chany'):
-                if self.attr is None:
-                    self.read_data()
-                # Generate 1 increment array as x
-                self.x_data = numpy.arange(len(self.attr.value))
+            if self.y is None:
+                length = 1
             else:
-                self.x_data = self.dev.devProxy.read_attribute(self.name.replace('y', 'x')).value
-            return self.x_data
-
-        def property(self, property_name):
+                length = len(self.y)
+            x_name = self.name.replace('y', 'x')
+            if x_name == self.name:
+                self.x = numpy.linspace(0, length, length, dtype=numpy.float32)
+                return self.x
             try:
-                return self.attr_proxy.get_propery(property_name)[property_name][0]
+                self.x_attr = self.device.read_attribute(x_name)
+                self.x = self.x_attr.value
+                return self.x
             except:
-                return ''
+                self.x = numpy.linspace(0, length, length, dtype=numpy.float32)
+                return self.x
+
+        def properties(self):
+            try:
+                db = self.device.get_device_db()
+                return db.get_device_attribute_property(self.device.name(), self.name)[self.name]
+            except:
+                return {}
+
+        def property(self, name):
+            return self.properties().get(name, [''])
 
         def get_marks(self):
-            if self.prop is None:
-                self.read_properties()
-            if self.attr is None:
-                self.read_data()
-            if self.x_data is None:
-                self.read_x_data()
-            ml = {}
-            for pk in self.prop:
-                if pk.endswith("_start"):
-                    pn = pk.replace("_start", "")
+            properties = self.properties()
+            marks = {}
+            for p_key in properties:
+                if p_key.endswith("_start"):
                     try:
-                        pv = int(self.prop[pk][0])
-                        pln = pn + "_length"
-                        if pln in self.prop:
-                            pl = int(self.prop[pln][0])
-                        else:
-                            pl = 1
-                        dx = self.x_data[1] - self.x_data[0]
-                        n1 = int((pv - self.x_data[0]) / dx)
-                        n2 = int((pv + pl - self.x_data[0]) / dx)
-                        ml[pn] = self.attr.value[n1:n2].mean()
+                        pv = float(properties[p_key][0])
+                        pln = p_key.replace("_start", "_length")
+                        pl = float(properties[pln][0])
+                        index = numpy.logical_and(self.x >= pv, self.x <= (pv + pl))
+                        mark_name = p_key.replace("_start", "")
+                        marks[mark_name] = self.y[index].mean()
                     except:
-                        ml[pn] = 0.0
-            return ml
+                        pass
+            return marks
 
     def __init__(self, tango_device_name: str, folder=''):
         self.logger = self.config_logger(name=__qualname__, level=logging.DEBUG)
@@ -69,18 +72,6 @@ class DumperDevice:
         self.active = False
         self.tango_device = None
         self.activate()
-
-    def config_logger(self, name: str = __name__, level: int = logging.DEBUG):
-        logger = logging.getLogger(name)
-        if not logger.hasHandlers():
-            logger.propagate = False
-            logger.setLevel(level)
-            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(log_formatter)
-            logger.addHandler(console_handler)
-        return logger
 
     def new_shot(self):
         return False
@@ -112,17 +103,32 @@ class DumperDevice:
     def property_list(self, filter='*'):
         return self.tango_device.get_property_list(filter)
 
+    @staticmethod
+    def config_logger(name: str = __name__, level: int = logging.DEBUG):
+        logger = logging.getLogger(name)
+        if not logger.hasHandlers():
+            logger.propagate = False
+            logger.setLevel(level)
+            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
+            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(log_formatter)
+            logger.addHandler(console_handler)
+        return logger
+
     TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
     FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
 
-    def as_boolean(self, value):
+    @staticmethod
+    def as_boolean(value):
         if value.lower() in DumperDevice.TRUE_VALUES:
             return True
         if value.lower() in DumperDevice.FALSE_VALUES:
             return False
         return None
 
-    def as_int(self, value):
+    @staticmethod
+    def as_int(value):
         try:
             return int(value)
         except:
