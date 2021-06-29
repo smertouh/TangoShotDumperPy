@@ -26,7 +26,8 @@ class TangoShotDumperServer(Device):
 
     def init_device(self):
         # set default properties
-        self.logger = self.config_logger(name=__qualname__, level=logging.DEBUG)
+        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
+        self.device_proxy = tango.DeviceProxy(self.get_name())
         self.log_file = None
         self.zip_file = None
         self.out_root_dir = '.\\data\\'
@@ -36,7 +37,7 @@ class TangoShotDumperServer(Device):
         try:
             self.set_state(DevState.INIT)
             # read config from device properties
-            level = self.get_device_property('log_level', 10)
+            level = self.get_device_property('log_level', logging.DEBUG)
             self.logger.setLevel(level)
             # read config from file
             self.config_file = self.get_device_property('config_file', 'ShotDumperPy.json')
@@ -50,6 +51,32 @@ class TangoShotDumperServer(Device):
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
             self.set_state(DevState.FAULT)
+
+    def get_device_property(self, prop: str, default=None):
+        try:
+            #self.assert_proxy()
+            pr = self.device_proxy.get_property(prop)[prop]
+            result = None
+            if len(pr) > 0:
+                result = pr[0]
+            if default is None:
+                return result
+            if result is None or result == '':
+                result = default
+            else:
+                result = type(default)(result)
+        except:
+            self.logger.debug('Error reading property %s for %s', prop, self.name)
+            result = default
+        return result
+
+    def set_device_property(self, prop: str, value: str):
+        try:
+            #self.assert_proxy()
+            self.device_proxy.put_property({prop: value})
+        except:
+            self.logger.info('Error writing property %s for %s', prop, self.device_name)
+            self.logger.debug('', exc_info=True)
 
     @staticmethod
     def config_logger(name: str = __name__, level: int = logging.DEBUG):
@@ -78,6 +105,7 @@ class TangoShotDumperServer(Device):
             self.shot = self.config.get('shot', 0)
             # Restore devices
             items = self.config.get("devices", [])
+            self.device_list = []
             if len(items) <= 0:
                 self.logger.error("No devices declared")
                 return False
@@ -87,7 +115,7 @@ class TangoShotDumperServer(Device):
                         exec(unit["exec"])
                     if 'eval' in unit:
                         item = eval(unit["eval"])
-                        self.devise_list.append(item)
+                        self.device_list.append(item)
                         self.logger.info("%s has been added" % unit["eval"])
                     else:
                         self.logger.info("No 'eval' option for %s" % unit)
@@ -101,8 +129,19 @@ class TangoShotDumperServer(Device):
             self.logger.debug('', exc_info=True)
             return False
 
+    def write_config(self, file_name):
+        try:
+            self.config['shot'] = self.shot
+            with open(file_name, 'w') as configfile:
+                configfile.write(json.dumps(self.config, indent=4))
+            self.logger.info('Configuration saved to %s' % file_name)
+        except:
+            self.logger.info('Configuration save error to %s' % file_name)
+            self.logger.debug('', exc_info=True)
+            return False
+
     def activate(self):
-        for item in self.server_device_list:
+        for item in self.device_list:
             try:
                 item.activate()
             except:
@@ -111,7 +150,7 @@ class TangoShotDumperServer(Device):
                 self.logger.debug('', exc_info=True)
 
     def check_new_shot(self):
-        for item in self.server_device_list:
+        for item in self.device_list:
             try:
                 if item.new_shot():
                     return True
@@ -124,6 +163,10 @@ class TangoShotDumperServer(Device):
     @staticmethod
     def date_time_stamp():
         return datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+
+    @staticmethod
+    def time_stamp():
+        return datetime.datetime.today().strftime('%H:%M:%S')
 
     @staticmethod
     def get_log_folder():
@@ -219,7 +262,7 @@ class TangoShotDumperServer(Device):
             self.log_file.write('\n')
             self.log_file.close()
             self.unlock_output_dir()
-            self.write_config()
+            self.write_config(self.config_file)
             print("%s Waiting for next shot ...\r\n" % self.time_stamp())
         except:
             self.logger.error("Unexpected exception")
@@ -234,7 +277,7 @@ def looping():
         try:
             dev.process()
             msg = '%s processed' % dev
-            dev.logger.info(msg)
+            dev.logger.debug(msg)
             dev.info_stream(msg)
         except:
             msg = '%s procession error' % dev

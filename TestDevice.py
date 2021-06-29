@@ -8,6 +8,7 @@ class TestDevice(DumperDevice):
     def __init__(self, delta_t=-1.0, points=0):
         super().__init__('', 'test_device')
         self.n = TestDevice.n
+        self.name = 'test_device_%d' % self.n
         self.time = time.time()
         self.shot = 0
         self.active = False

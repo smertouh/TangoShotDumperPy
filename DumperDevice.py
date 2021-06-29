@@ -170,7 +170,7 @@ class DumperDevice:
             zip_file.writestr(zip_entry, outbuf)
 
     def __init__(self, device_or_attribute_name: str, folder=None):
-        self.logger = self.config_logger(name=__qualname__, level=logging.DEBUG)
+        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
         self.name = device_or_attribute_name
         if folder is None:
             folder = self.name.split('/')[-1]
