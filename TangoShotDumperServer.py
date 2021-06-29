@@ -5,11 +5,13 @@
 Shot dumper tango device server
 A. L. Sanin, started 25.06.2021
 """
-
+import datetime
 import logging
+import os
 import sys
 import time
 import json
+import zipfile
 
 import tango
 from tango import DevState
@@ -20,11 +22,16 @@ NaN = float('nan')
 
 class TangoShotDumperServer(Device):
     version = '1.0'
-    device_list = []
+    server_device_list = []
 
     def init_device(self):
         # set default properties
         self.logger = self.config_logger(name=__qualname__, level=logging.DEBUG)
+        self.log_file = None
+        self.zip_file = None
+        self.out_root_dir = '.\\data\\'
+        self.out_dir = None
+        self.locked = False
         # read config
         try:
             self.set_state(DevState.INIT)
@@ -34,50 +41,15 @@ class TangoShotDumperServer(Device):
             # read config from file
             self.config_file = self.get_device_property('config_file', 'ShotDumperPy.json')
             self.read_config(self.config_file)
-
-            devices = self.get_device_property('devices', '{}')
-            # create PicoLog1000 device
-            self.picolog = PicoLog1000()
-            self.set_state(DevState.ON)
-            # change PicoLog1000 logger to class logger
-            self.picolog.logger = self.logger
-            # open PicoLog1000 device
-            self.picolog.open()
-            self.set_state(DevState.OPEN)
-            self.picolog.get_info()
-            self.device_type_str = self.picolog.info['PICO_VARIANT_INFO']
-            # set sampling interval channels and number of points
-            self.set_sampling()
-            # set trigger
-            self.set_trigger()
-            # OK message
-            msg = '%s %s has been initialized' % (self.device_name, self.device_type_str)
-            self.logger.info(msg)
-            self.info_stream(msg)
-            self.set_state(DevState.STANDBY)
-            # add device to the list
-            if self not in TangoShotDumperServer.devices:
-                TangoShotDumperServer.devices.append(self)
-        except Exception as ex:
-            msg = '%s Exception initialing PicoLog: %s' % (self.device_name, sys.exc_info()[1])
+            # devices = self.get_device_property('devices', '{}')
+            if self not in TangoShotDumperServer.server_device_list:
+                TangoShotDumperServer.server_device_list.append(self)
+        except:
+            msg = 'Exception in TangoShotDumprServer'
             self.logger.error(msg)
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
             self.set_state(DevState.FAULT)
-
-    def delete_device(self):
-        try:
-            self.picolog.stop()
-        except:
-            pass
-        try:
-            self.picolog.close()
-        except:
-            pass
-        self.set_state(DevState.CLOSE)
-        msg = '%s PicoLog has been deleted' % self.device_name
-        self.logger.info(msg)
-        self.info_stream(msg)
 
     @staticmethod
     def config_logger(name: str = __name__, level: int = logging.DEBUG):
@@ -102,7 +74,7 @@ class TangoShotDumperServer(Device):
             self.logger.setLevel(self.config.get('log_level', logging.DEBUG))
             self.logger.log(logging.DEBUG, "Log level set to %d" % self.logger.level)
             self.config["sleep"] = float(self.config.get("sleep", 1.0))
-            self.out_dir = self.config.get("out_dir", '.\\data\\')
+            self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
             self.shot = self.config.get('shot', 0)
             # Restore devices
             items = self.config.get("devices", [])
@@ -129,28 +101,146 @@ class TangoShotDumperServer(Device):
             self.logger.debug('', exc_info=True)
             return False
 
+    def activate(self):
+        for item in self.server_device_list:
+            try:
+                item.activate()
+            except:
+                self.server_device_list.remove(item)
+                self.logger.error("%s activation error", item)
+                self.logger.debug('', exc_info=True)
+
+    def check_new_shot(self):
+        for item in self.server_device_list:
+            try:
+                if item.new_shot():
+                    return True
+            except:
+                # self.device_list.remove(item)
+                self.logger.error("%s check for new shot", item)
+                self.logger.debug('', exc_info=True)
+        return False
+
+    @staticmethod
+    def date_time_stamp():
+        return datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+
+    @staticmethod
+    def get_log_folder():
+        ydf = datetime.datetime.today().strftime('%Y')
+        mdf = datetime.datetime.today().strftime('%Y-%m')
+        ddf = datetime.datetime.today().strftime('%Y-%m-%d')
+        folder = os.path.join(ydf, mdf, ddf)
+        return folder
+
+    def make_log_folder(self):
+        of = os.path.join(self.out_root_dir, self.get_log_folder())
+        try:
+            if not os.path.exists(of):
+                os.makedirs(of)
+                self.logger.debug("Output folder %s has been created", of)
+            self.out_dir = of
+            return True
+        except:
+            self.logger.debug("Can not create output folder %s", of)
+            self.out_dir = None
+            return False
+
+    def lock_output_dir(self, folder=None):
+        if folder is None:
+            folder = self.out_dir
+        if self.locked:
+            self.logger.warning("Unexpected lock")
+            self.zip_file.close()
+            self.log_file.close()
+            self.unlock_output_dir()
+        self.lock_file = open(os.path.join(folder, "lock.lock"), 'w+')
+        self.locked = True
+        self.logger.debug("Directory %s locked", folder)
+
+    def unlock_output_dir(self):
+        if self.lock_file is not None:
+           self.lock_file.close()
+           os.remove(self.lock_file.name)
+        self.locked = False
+        self.lock_file = None
+        self.logger.debug("Directory unlocked")
+
+    def open_log_file(self, folder=''):
+        logf = open(os.path.join(folder, self.get_log_file_name()), 'a')
+        return logf
+
+    @staticmethod
+    def get_log_file_name():
+        logfn = datetime.datetime.today().strftime('%Y-%m-%d.log')
+        return logfn
+
+    @staticmethod
+    def open_zip_file(folder):
+        fn = datetime.datetime.today().strftime('%Y-%m-%d_%H%M%S.zip')
+        zip_file_name = os.path.join(folder, fn)
+        zip_file = zipfile.ZipFile(zip_file_name, 'a', compression=zipfile.ZIP_DEFLATED)
+        return zip_file
+
+    def process(self):
+        # Activate items in devices_list
+        self.activate()
+        if len(self.server_device_list) <= 0:
+            self.logger.error("No active devices")
+            return
+        try:
+            self.activate()
+            if not self.check_new_shot():
+                return
+            dts = self.date_time_stamp()
+            self.shot += 1
+            self.config['shot'] = self.shot
+            self.config['shot_time'] = dts
+            print("\r\n%s New Shot %d" % (dts, self.shot))
+            self.make_log_folder()
+            self.lock_output_dir()
+            self.log_file = self.open_log_file(self.out_dir)
+            # Write date and time
+            self.log_file.write(dts)
+            # Write shot number
+            self.log_file.write('; Shot=%d' % self.shot)
+            # Open zip file
+            self.zip_file = self.open_zip_file(self.out_dir)
+            for item in self.device_list:
+                print("Saving %s" % item.name)
+                try:
+                    item.save(self.log_file, self.zip_file)
+                except:
+                    self.logger.error("Exception saving %s" % str(item))
+                    self.logger.debug('', exc_info=True)
+            zfn = os.path.basename(self.zip_file.filename)
+            self.zip_file.close()
+            self.log_file.write('; File=%s' % zfn)
+            self.log_file.write('\n')
+            self.log_file.close()
+            self.unlock_output_dir()
+            self.write_config()
+            print("%s Waiting for next shot ...\r\n" % self.time_stamp())
+        except:
+            self.logger.error("Unexpected exception")
+            self.logger.debug('', exc_info=True)
+        return
+
 
 def looping():
-    time.sleep(0.001)
-    for dev in PicoPyServer.devices:
-        if dev.record_initiated:
-            try:
-                if dev.picolog.ready():
-                    dev.stop_time_value = time.time()
-                    dev.picolog.read()
-                    dev.record_initiated = False
-                    dev.data_ready_value = True
-                    msg = '%s Recording finished, y is ready' % dev.device_name
-                    dev.logger.info(msg)
-                    dev.info_stream(msg)
-            except:
-                dev.record_initiated = False
-                dev.data_ready_value = False
-                msg = '%s Reading y error' % dev.device_name
-                dev.logger.warning(msg)
-                dev.error_stream(msg)
-                dev.logger.debug('', exc_info=True)
-    # PicoPyServer.logger.debug('loop exit')
+    print("%s Waiting for next shot ..." % TangoShotDumperServer.time_stamp())
+    for dev in TangoShotDumperServer.server_device_list:
+        time.sleep(dev.config['sleep'])
+        try:
+            dev.process()
+            msg = '%s processed' % dev
+            dev.logger.info(msg)
+            dev.info_stream(msg)
+        except:
+            msg = '%s procession error' % dev
+            dev.logger.warning(msg)
+            dev.error_stream(msg)
+            dev.logger.debug('', exc_info=True)
 
 
 if __name__ == "__main__":

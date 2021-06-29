@@ -1,86 +1,4 @@
-import os
-import os.path
-import sys
-import json
-import logging
-import datetime
-import time
-import zipfile
-
-import numpy
-import tango
-
-
-def config_logger(name: str=__name__, level: int=logging.DEBUG):
-    logger = logging.getLogger(name)
-    if not logger.hasHandlers():
-        logger.propagate = False
-        logger.setLevel(level)
-        f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(log_formatter)
-        logger.addHandler(console_handler)
-    return logger
-
-
-# Configure logging
-LOGGER = config_logger()
-
-PROG_NAME = "PyTango Shot Dumper"
-PROG_NAME_SHORT = "ShotDumperPy"
-PROG_VERSION = "3.1"
-CONFIG_FILE_NAME = PROG_NAME_SHORT + ".json"
-
-CONFIG = {}
-DEVICE_LIST = []
-
-
-def print_exception_info(level=logging.DEBUG):
-    LOGGER.log(level, "Exception ", exc_info=True)
-
-
-def convert_to_buf(x, y, avgc, fmt='%f; %f'):
-        xs = 0.0
-        ys = 0.0
-        ns = 0.0
-        fmt = fmt
-        s = ''
-        outbuf = ''
-
-        if y is None or x is None:
-            return outbuf
-        if len(y) <= 0 or len(x) <= 0:
-            return outbuf
-        n = len(y)
-        if len(y) != len(x):
-            if len(x) < n:
-                n = len(x)
-            LOGGER.log(logging.WARNING, "X and Y arrays of different length, truncated to %d" % n)
-
-        if avgc < 1:
-            avgc = 1
-
-        for i in range(n):
-            xs += x[i]
-            ys += y[i]
-            ns += 1.0
-            if ns >= avgc:
-                if i >= avgc:
-                    outbuf += '\r\n'
-                s = fmt % (xs / ns, ys / ns)
-                outbuf += s.replace(",", ".")
-                xs = 0.0
-                ys = 0.0
-                ns = 0.0
-        if ns > 0:
-            outbuf += '\r\n'
-            s = fmt % (xs / ns, ys / ns)
-            outbuf += s.replace(",", ".")
-            xs = 0.0
-            ys = 0.0
-            ns = 0.0
-        return outbuf
+from DumperDevice import *
 
 
 class TestDevice:
@@ -302,9 +220,9 @@ class AdlinkADC:
         avg = chan.get_prop_as_int("save_avg")
         if avg < 1:
             avg = 1
-        if chan.x is None or len(chan.x) != len(chan.attr.value):
-            chan.x = chan.read_x_data()
-        buf = convert_to_buf(chan.x, chan.attr.value, avg)
+        if chan.x_data is None or len(chan.x_data) != len(chan.attr.value):
+            chan.x_data = chan.read_x_data()
+        buf = convert_to_buf(chan.x_data, chan.attr.value, avg)
         zip_file.writestr(entry, buf)
 
     def save_prop(self, zip_file, chan):
@@ -326,7 +244,7 @@ class AdlinkADC:
         # Units
         unit = chan.get_prop('unit')
         # Calibration coefficient for conversion to units
-        coeff = chan.property_as_boolean("display_unit")
+        coeff = chan.get_prop_as_float("display_unit")
         if coeff is None or coeff == 0.0:
             coeff = 1.0
 
@@ -393,7 +311,7 @@ class AdlinkADC:
                                 self.save_data(zip_file, chan)
                         break
                     except:
-                        LOGGER.log(logging.WARNING, "Adlink %s y save exception" % self.get_name())
+                        LOGGER.log(logging.WARNING, "Adlink %s data save exception" % self.get_name())
                         print_exception_info()
                         retry_count -= 1
                     if retry_count > 0:
@@ -678,7 +596,7 @@ class TangoAttribute:
                 pass
             zip_file.writestr(entry, buf)
         except:
-            LOGGER.log(logging.WARNING, "Attribute y save error for %s" % self.get_name())
+            LOGGER.log(logging.WARNING, "Attribute data save error for %s" % self.get_name())
 
     def save_prop(self, zip_file):
         entry = self.folder + "/" + "param" + self.label + ".txt"
@@ -766,205 +684,3 @@ class TangoAttribute:
             self.save_log(log_file)
         if self.sdf:
             self.save_data(zip_file)
-
-
-class ShotDumper:
-    def __init__(self):
-        self.logger = LOGGER
-        self.device_list = DEVICE_LIST
-        self.outFolder = ".\\y\\"
-        self.lockFile = None
-        self.locked = False
-        self.shot = 0
-        self.logFile = None
-        self.zipFile = None
-        self.outRootDir = '.\\y\\'
-
-    def read_config(self, file_name=CONFIG_FILE_NAME):
-        global CONFIG
-        global DEVICE_LIST
-        try:
-            # Read config from file
-            with open(file_name, 'r') as configfile:
-                s = configfile.read()
-            CONFIG = json.loads(s)
-            # Restore log level
-            LOGGER.setLevel(CONFIG.get('Loglevel', logging.DEBUG))
-            LOGGER.log(logging.DEBUG, "Log level set to %d" % LOGGER.level)
-            CONFIG["sleep"] = CONFIG.get("sleep", 1.0)
-            self.outRootDir = CONFIG.get("outDir", '.\\y\\')
-            self.shot = CONFIG.get('shot', 0)
-            # Restore devices
-            items = CONFIG.get("devices", [])
-            if len(items) <= 0:
-                LOGGER.error("No devices declared")
-                return
-            for unit in items:
-                try:
-                    if 'exec' in unit:
-                        exec(unit["exec"])
-                    if 'eval' in unit:
-                        item = eval(unit["eval"])
-                        DEVICE_LIST.append(item)
-                        LOGGER.info("%s has been added" % str(unit["eval"]))
-                    else:
-                        LOGGER.debug("No 'eval' option for device %s" % unit)
-                except:
-                    LOGGER.log(logging.WARNING, "Error in device %s initialization" % str(unit))
-                    print_exception_info()
-            LOGGER.info('Configuration restored from %s' % file_name)
-            return True
-        except:
-            LOGGER.info('Configuration restore error from %s' % file_name)
-            print_exception_info()
-            return False
-
-    def write_config(self, file_name=CONFIG_FILE_NAME):
-        global CONFIG
-        try:
-            CONFIG['shot'] = self.shot
-            with open(file_name, 'w') as configfile:
-                configfile.write(json.dumps(CONFIG, indent=4))
-            LOGGER.info('Configuration saved to %s' % file_name)
-        except:
-            LOGGER.info('Configuration save error to %s' % file_name)
-            print_exception_info()
-            return False
-
-    def activate(self):
-        for item in self.device_list:
-            try:
-                item.activate()
-            except:
-                self.device_list.remove(item)
-                self.logger.error("%s activation error", item)
-                self.logger.debug('', exc_info=True)
-
-    def check_new_shot(self):
-        for item in self.device_list:
-            try:
-                if item.new_shot():
-                    return True
-            except:
-                # self.device_list.remove(item)
-                self.logger.error("%s check for new shot", item)
-                self.logger.debug('', exc_info=True)
-        return False
-
-    def process(self):
-        self.logFile = None
-        self.zipFile = None
-        # Activate items in devices_list
-        self.activate()
-        if len(self.device_list) <= 0:
-            self.logger.error("No active devices")
-            return
-        # main loop
-        print("%s Waiting for next shot ..." % self.time_stamp())
-        while True:
-            time.sleep(CONFIG['sleep'])
-            try:
-                self.activate()
-                if not self.check_new_shot():
-                    continue
-                dts = self.date_time_stamp()
-                self.shot += 1
-                CONFIG['shot'] = self.shot
-                CONFIG['shot_time'] = dts
-                print("\n%s New Shot %d" % (dts, self.shot))
-                self.make_log_folder()
-                self.lock_dir(self.outFolder)
-                self.logFile = self.open_log_file(self.outFolder)
-                # Write date and time
-                self.logFile.write(dts)
-                # Write shot number
-                self.logFile.write('; Shot=%d' % self.shot)
-                # Open zip file
-                self.zipFile = self.open_zip_file(self.outFolder)
-                for item in self.device_list:
-                    print("Saving from %s" % item.name())
-                    try:
-                        item.save(self.logFile, self.zipFile)
-                    except:
-                        LOGGER.log(logging.WARNING, "Exception saving y from %s" % str(item))
-                        print_exception_info()
-                self.zipFile.close()
-                zfn = os.path.basename(self.zipFile.filename)
-                self.logFile.write('; File=%s' % zfn)
-                self.logFile.write('\n')
-                self.logFile.close()
-                self.unlock_dir()
-                self.write_config()
-                print("%s Waiting for next shot ..." % self.time_stamp())
-            except:
-                LOGGER.log(logging.CRITICAL, "Unexpected exception")
-                print_exception_info()
-                return
-
-    def make_log_folder(self):
-        of = os.path.join(self.outRootDir, self.get_log_folder())
-        try:
-            if not os.path.exists(of):
-                os.makedirs(of)
-                LOGGER.log(logging.DEBUG, "Output folder %s has been created", self.outFolder)
-            self.outFolder = of
-            return True
-        except:
-            LOGGER.log(logging.CRITICAL, "Can not create output folder %s", self.outFolder)
-            self.outFolder = None
-            return False
-
-    def get_log_folder(self):
-        ydf = datetime.datetime.today().strftime('%Y')
-        mdf = datetime.datetime.today().strftime('%Y-%m')
-        ddf = datetime.datetime.today().strftime('%Y-%m-%d')
-        folder = os.path.join(ydf, mdf, ddf)
-        return folder
-
-    def lock_dir(self, folder):
-        if self.locked:
-            self.logger.warning("Unexpected lock")
-            self.zipFile.close()
-            self.logFile.close()
-            self.unlock_dir()
-        self.lockFile = open(os.path.join(folder, "lock.lock"), 'w+')
-        self.locked = True
-        self.logger.debug("Directory %s locked", folder)
-
-    def open_log_file(self, folder=''):
-        self.logFileName = os.path.join(folder, self.get_log_file_name())
-        logf = open(self.logFileName, 'a')
-        return logf
-
-    def get_log_file_name(self):
-        logfn = datetime.datetime.today().strftime('%Y-%m-%d.log')
-        return logfn
-
-    def date_time_stamp(self):
-        return datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-
-    def time_stamp(self):
-        return datetime.datetime.today().strftime('%H:%M:%S')
-
-    def open_zip_file(self, folder):
-        fn = datetime.datetime.today().strftime('%Y-%m-%d_%H%M%S.zip')
-        zip_file_name = os.path.join(folder, fn)
-        zip_file = zipfile.ZipFile(zip_file_name, 'a', compression=zipfile.ZIP_DEFLATED)
-        return zip_file
-
-    def unlock_dir(self):
-        if self.lockFile is not None:
-           self.lockFile.close()
-           os.remove(self.lockFile.name)
-        self.locked = False
-        LOGGER.log(logging.DEBUG, "Directory unlocked")
-
-
-if __name__ == '__main__':
-    sd = ShotDumper()
-    try:
-        sd.read_config()
-        sd.process()
-    except:
-        LOGGER.log(logging.CRITICAL, "Exception in %s", PROG_NAME_SHORT)
-        print_exception_info()

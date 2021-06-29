@@ -169,9 +169,11 @@ class DumperDevice:
                     outbuf += s.replace(",", ".")
             zip_file.writestr(zip_entry, outbuf)
 
-    def __init__(self, tango_device_name: str, folder='./'):
+    def __init__(self, device_or_attribute_name: str, folder=None):
         self.logger = self.config_logger(name=__qualname__, level=logging.DEBUG)
-        self.name = tango_device_name
+        self.name = device_or_attribute_name
+        if folder is None:
+            folder = self.name.split('/')[-1]
         if not folder.endswith('/'):
             folder += '/'
         self.folder = folder
@@ -194,7 +196,7 @@ class DumperDevice:
                 self.logger.warning("%s activation error", self.name)
         return self.active
 
-    def save(self, log_file, zip_file):
+    def save(self, log_file, zip_file, zip_folder=''):
         raise NotImplemented()
         # if not self.active:
         #     self.logger.debug('Reading inactive device')

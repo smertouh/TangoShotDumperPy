@@ -1,14 +1,11 @@
 {
-    "sleep": 2.0,
+    "sleep": 1.0,
     "log_level": 10,
     "out_dir": "D:\\data\\",
     "devices": [
         {
-            "exec": "import PicLog100",
-            "eval": "PicLog100(dev='binp/nbi/adc0', avg=100, folder='ADC_0')"
-        },
-        {
-            "eval": "TangoAttribute('binp/nbi/lauda', '1012', folder='example')"
+            "exec": "from TestDevice import TestDevice",
+            "eval": "TestDevice(2.0)"
         }
     ],
     "shot": 7340,
