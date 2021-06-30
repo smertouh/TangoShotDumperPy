@@ -45,6 +45,7 @@ class TangoShotDumperServer(Device):
             # devices = self.get_device_property('devices', '{}')
             if self not in TangoShotDumperServer.server_device_list:
                 TangoShotDumperServer.server_device_list.append(self)
+            print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
         except:
             msg = 'Exception in TangoShotDumperServer'
             self.logger.error(msg)
@@ -141,13 +142,16 @@ class TangoShotDumperServer(Device):
             return False
 
     def activate(self):
+        n = 0
         for item in self.device_list:
             try:
-                item.activate()
+                if item.activate():
+                    n += 1
             except:
                 # self.server_device_list.remove(item)
                 self.logger.error("%s activation error", item)
                 self.logger.debug('', exc_info=True)
+            return n
 
     def check_new_shot(self):
         for item in self.device_list:
@@ -226,15 +230,15 @@ class TangoShotDumperServer(Device):
         return zip_file
 
     def process(self):
-        # Activate items in devices_list
-        self.activate()
-        if len(self.device_list) <= 0:
-            self.logger.error("No active devices")
-            return
         try:
-            self.activate()
+            # activate items in devices_list
+            if self.activate() <= 0:
+                self.logger.info("No active devices")
+                return
+            # check for new shot
             if not self.check_new_shot():
                 return
+            # new shot - save signals
             dts = self.date_time_stamp()
             self.shot += 1
             self.config['shot'] = self.shot
@@ -252,6 +256,10 @@ class TangoShotDumperServer(Device):
             for item in self.device_list:
                 print("Saving %s" % item.name)
                 try:
+                    item.logger = self.logger
+                except:
+                    pass
+                try:
                     item.save(self.log_file, self.zip_file)
                 except:
                     self.logger.error("Exception saving %s" % str(item))
@@ -263,24 +271,23 @@ class TangoShotDumperServer(Device):
             self.log_file.close()
             self.unlock_output_dir()
             self.write_config(self.config_file)
-            print("%s Waiting for next shot ...\r\n" % self.time_stamp())
         except:
             self.logger.error("Unexpected exception")
             self.logger.debug('', exc_info=True)
+        print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
         return
 
 
 def looping():
-    print("%s Waiting for next shot ..." % TangoShotDumperServer.time_stamp())
     for dev in TangoShotDumperServer.server_device_list:
         time.sleep(dev.config['sleep'])
         try:
             dev.process()
-            msg = '%s processed' % dev
-            dev.logger.debug(msg)
-            dev.info_stream(msg)
+            # msg = '%s processed' % dev.name
+            # dev.logger.debug(msg)
+            # dev.debug_stream(msg)
         except:
-            msg = '%s procession error' % dev
+            msg = '%s process error' % dev
             dev.logger.warning(msg)
             dev.error_stream(msg)
             dev.logger.debug('', exc_info=True)

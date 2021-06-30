@@ -16,11 +16,8 @@ class TestDevice(DumperDevice):
         self.points = points
         TestDevice.n += 1
 
-    def name(self):
-        return "TestDevice_%d" % self.n
-
     def __str__(self):
-        return self.name()
+        return self.name
 
     def activate(self):
         if self.active:
@@ -31,21 +28,21 @@ class TestDevice(DumperDevice):
         return True
 
     def new_shot(self):
-        if 0.0 <= self.delta_t < (time.time() - self.time):
+        if 0.0 < self.delta_t < (time.time() - self.time):
             self.shot += 1
             self.time = time.time()
             self.logger.debug("TestDevice %d - New shot %d" % (self.n, self.shot))
             return True
         return False
 
-    def save(self, log_file, zip_file):
+    def save(self, log_file, zip_file, zip_folder='test'):
         self.logger.debug("TestDevice %d - Save" % self.n)
-        log_file.write('; TestDev_%d=%f' % (self.n, self.time))
+        log_file.write('; %s=%f' % (self.name, self.time))
         if self.points > 0:
             buf = ""
             for k in range(self.points):
-                s = '%f; %f' % (float(k), numpy.sin(time.time() + float(self.n) + float(k) / 100.0) + 0.1 * numpy.sin(
-                    time.time() + float(k) / 5.0))
+                w = 2.0 * numpy.pi * float(k) / (self.points -1)
+                s = '%f; %f' % (float(k), numpy.sin(w + float(self.n)) + 0.1 * numpy.sin(4.0 * w))
                 buf += s.replace(",", ".")
                 if k < self.points - 1:
                     buf += '\r\n'
