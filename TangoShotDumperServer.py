@@ -46,7 +46,7 @@ class TangoShotDumperServer(Device):
             if self not in TangoShotDumperServer.server_device_list:
                 TangoShotDumperServer.server_device_list.append(self)
         except:
-            msg = 'Exception in TangoShotDumprServer'
+            msg = 'Exception in TangoShotDumperServer'
             self.logger.error(msg)
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
@@ -125,7 +125,7 @@ class TangoShotDumperServer(Device):
             self.logger.info('Configuration restored from %s' % file_name)
             return True
         except:
-            self.logger.info('Configuration restore error from %s' % file_name)
+            self.logger.info('Configuration read error from %s' % file_name)
             self.logger.debug('', exc_info=True)
             return False
 
@@ -145,7 +145,7 @@ class TangoShotDumperServer(Device):
             try:
                 item.activate()
             except:
-                self.server_device_list.remove(item)
+                # self.server_device_list.remove(item)
                 self.logger.error("%s activation error", item)
                 self.logger.debug('', exc_info=True)
 
@@ -228,7 +228,7 @@ class TangoShotDumperServer(Device):
     def process(self):
         # Activate items in devices_list
         self.activate()
-        if len(self.server_device_list) <= 0:
+        if len(self.device_list) <= 0:
             self.logger.error("No active devices")
             return
         try:
