@@ -5,9 +5,9 @@
     "devices": [
         {
             "exec": "from TestDevice import TestDevice",
-            "eval": "TestDevice(2.0, 100)"
+            "eval": "TestDevice(5.0, 100)"
         }
     ],
-    "shot": 7352,
-    "shot_time": "2021-06-30 09:30:17"
+    "shot": 7365,
+    "shot_time": "2021-06-30 10:07:35"
 }
