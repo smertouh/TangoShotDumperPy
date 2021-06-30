@@ -248,7 +248,7 @@ class AdlinkADC:
         if coeff is None or coeff == 0.0:
             coeff = 1.0
 
-        marks = chan.get_marks()
+        marks = chan.mark_values()
 
         # Find zero value
         zero = 0.0

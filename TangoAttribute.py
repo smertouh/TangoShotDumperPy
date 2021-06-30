@@ -1,18 +1,16 @@
-import time
 from DumperItem import *
 
 
 class TangoAttribute(DumperItem):
-    def __init__(self, attribute_name, folder=None, force=True, ahead=None):
-        super().__init__(attribute_name, folder)
+    def __init__(self, device_name, attribute_name, folder=None, force=True, ahead=None):
+        super().__init__(device_name)
+        self.attribute_name = attribute_name
+        self.folder = folder
         self.force = force
         self.ahead = ahead
         self.retry_count = 3
 
     def activate(self):
-        if self.active:
-            return True
-        self.time = time.time()
         super().activate()
         return self.active
 

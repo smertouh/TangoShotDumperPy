@@ -2,19 +2,17 @@ import time
 from DumperItem import *
 
 
-class TestDevice(DumperItem):
+class DumperTestDevice(DumperItem):
     n = 0
 
     def __init__(self, delta_t=-1.0, points=0):
-        super().__init__('', 'test_device')
-        self.n = TestDevice.n
-        self.name = 'test_device_%d' % self.n
-        self.time = time.time()
+        super().__init__('test_device')
+        self.n = DumperTestDevice.n
+        self.name = 'TestDevice_%d' % self.n
         self.shot = 0
-        self.active = False
         self.delta_t = delta_t
         self.points = points
-        TestDevice.n += 1
+        DumperTestDevice.n += 1
 
     def __str__(self):
         return self.name
@@ -24,19 +22,18 @@ class TestDevice(DumperItem):
             return True
         self.active = True
         self.time = time.time()
-        self.logger.debug("TestDevice %d activated" % self.n)
+        self.logger.debug("TestDevice %s activated" % self.name)
         return True
 
     def new_shot(self):
         if 0.0 < self.delta_t < (time.time() - self.time):
             self.shot += 1
             self.time = time.time()
-            self.logger.debug("TestDevice %d - New shot %d" % (self.n, self.shot))
+            self.logger.debug("%s New shot %d" % (self.name, self.shot))
             return True
         return False
 
     def save(self, log_file, zip_file, zip_folder='test_device'):
-        self.logger.debug("TestDevice %d - Save" % self.n)
         log_file.write('; %s=%f' % (self.name, self.time))
         if self.points > 0:
             buf = ""

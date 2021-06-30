@@ -7,12 +7,12 @@ class PicoLog1000(DumperItem):
 
     def save(self, log_file, zip_file):
         # read data ready
-        data_ready = self.tango_device.read_attribute('data_ready').value
+        data_ready = self.device.read_attribute('data_ready').value
         if not data_ready:
             self.logger.warning("%s y is not ready" % self.name)
             return
         # read channels list
-        channels = self.tango_device.read_attribute('channels').value
+        channels = self.device.read_attribute('channels').value
         channels_list = []
         try:
             channels_list = eval(channels)
@@ -22,9 +22,9 @@ class PicoLog1000(DumperItem):
             self.logger.warning("%s empty channels list" % self.name)
             return
         # read other attributes
-        trigger = self.tango_device.read_attribute('trigger').value
-        sampling = self.tango_device.read_attribute('sampling').value
-        points = self.tango_device.read_attribute('points_per_channel').value
+        trigger = self.device.read_attribute('trigger').value
+        sampling = self.device.read_attribute('sampling').value
+        points = self.device.read_attribute('points_per_channel').value
         # generate times array
         times = numpy.linspace(0, (points - 1) * sampling, points, dtype=numpy.float32)
         if trigger < points:
@@ -33,7 +33,7 @@ class PicoLog1000(DumperItem):
         # save channels data and properties
         for i, number in enumerate(channels_list):
             try:
-                chan = PicoLog1000.Channel(self.tango_device, number)
+                chan = PicoLog1000.Channel(self.device, number)
                 properties = chan.properties()
                 # read flags
                 sdf = self.as_boolean(properties.get("save_data", ['False'])[0])

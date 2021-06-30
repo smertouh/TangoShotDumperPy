@@ -1,3 +1,4 @@
+import time
 import logging
 
 import numpy
@@ -5,92 +6,9 @@ import tango
 
 
 class DumperItem:
-    def __init__(self, device_name: str, zip_folder=None, **kwargs):
-        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
-        self.name = device_name
-        if zip_folder is None:
-            zip_folder = self.name.split('/')[-1]
-        if not zip_folder.endswith('/'):
-            zip_folder += '/'
-        self.zip_folder = zip_folder
-        self.active = False
-        self.tango_device = None
-        self.activate()
-
-    def new_shot(self):
-        return False
-
-    def activate(self):
-        if not self.active:
-            try:
-                self.tango_device = tango.DeviceProxy(self.name)
-                self.active = True
-                self.logger.debug("%s has been activated", self.name)
-            except:
-                self.tango_device = None
-                self.active = False
-                self.logger.warning("%s activation error", self.name)
-        return self.active
-
-    def save(self, log_file, zip_file, zip_folder=''):
-        raise NotImplemented()
-        # if not self.active:
-        #     self.logger.debug('Reading inactive device')
-        #     return
-
-    def property(self, prop_name):
-        try:
-            return self.tango_device.get_property(prop_name)[prop_name][0]
-        except:
-            return ''
-
-    def property_list(self, filter='*'):
-        return self.tango_device.get_property_list(filter)
-
-    def properties(self, filter='*'):
-        # returns dictionary with device properties
-        names = self.tango_device.get_property_list(filter)
-        return self.tango_device.get_property(names)
-
-    @staticmethod
-    def config_logger(name: str = __name__, level: int = logging.DEBUG):
-        logger = logging.getLogger(name)
-        if not logger.hasHandlers():
-            logger.propagate = False
-            logger.setLevel(level)
-            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(log_formatter)
-            logger.addHandler(console_handler)
-        return logger
-
-    TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
-    FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
-
-    @staticmethod
-    def as_boolean(value):
-        if value.lower() in DumperItem.TRUE_VALUES:
-            return True
-        if value.lower() in DumperItem.FALSE_VALUES:
-            return False
-        return None
-
-    @staticmethod
-    def as_int(value):
-        try:
-            return int(value)
-        except:
-            return None
-
-    class DumperItemChannel:
-        def __init__(self, device, channel, prefix='channel_', format='%03i'):
-            if isinstance(device, str):
-                self.device = DumperItem(device)
-            elif isinstance(device, DumperItem):
-                self.device = device
-            else:
-                raise Exception('Wrong device format')
+    class Channel:
+        def __init__(self, device: tango.DeviceProxy, channel, prefix='channel_', format='%03i'):
+            self.device = device
             if type(channel) is int:
                 self.name = prefix + (format % channel)
             else:
@@ -105,13 +23,11 @@ class DumperItem:
             self.y = self.y_attr.value
             return self.y
 
-        def read_x(self):
-            if self.y is None:
-                length = 1
-            else:
-                length = len(self.y)
-            x_name = self.name.replace('y', 'x')
+        def read_x(self, x_name=None):
+            if x_name is None:
+                x_name = self.name.replace('y', 'x')
             if x_name == self.name:
+                self.x_attr = None
                 self.x = None
                 return self.x
             try:
@@ -119,6 +35,7 @@ class DumperItem:
                 self.x = self.x_attr.value
                 return self.x
             except:
+                self.x_attr = None
                 self.x = None
                 return self.x
 
@@ -130,24 +47,39 @@ class DumperItem:
             except:
                 return {}
 
-        def property(self, name):
-            return self.properties().get(name, [''])
+        def property(self, property_name):
+            result = self.properties().get(property_name, [''])
+            if len(result) == 1:
+                result = result[0]
+            return result
 
-        def get_marks(self):
+        def marks(self):
             properties = self.properties()
-            marks = {}
+            result = {}
             for p_key in properties:
                 if p_key.endswith("_start"):
                     try:
                         pv = float(properties[p_key][0])
                         pln = p_key.replace("_start", "_length")
                         pl = float(properties[pln][0])
-                        index = numpy.logical_and(self.x >= pv, self.x <= (pv + pl))
                         mark_name = p_key.replace("_start", "")
-                        marks[mark_name] = self.y[index].mean()
+                        if pl > 0.0:
+                            result[mark_name] = (pv, pv + pl)
                     except:
                         pass
-            return marks
+            return result
+
+        def mark_values(self):
+            result = {}
+            mrk = self.marks()
+            for key in mrk:
+                try:
+                    rng = mrk[key]
+                    index = numpy.logical_and(self.x >= rng[0], self.x <= rng[1])
+                    result[key] = self.y[index].mean()
+                except:
+                    pass
+            return result
 
         def save_log(self, log_file):
             properties = self.properties()
@@ -161,13 +93,15 @@ class DumperItem:
             unit = properties.get('unit', [''])[0]
             # coefficient for conversion to units
             coeff = float(properties.get('display_unit', ['1.0'])[0])
+            # output data format
+            format = properties.get('format', ['%6.2f'])[0]
             # process marks
-            marks = self.get_marks()
+            marks = self.mark_values()
             # Find zero value
             zero = marks.get('zero', 0.0)
-            # Convert all marks to mark_value = (mark - zero)*coeff
+            # Convert all marks to mark_value = (mark - zero)*coeff print and save to log file
+            first_line = True
             for mark in marks:
-                first_line = True
                 # If it is not zero mark
                 if not "zero" == mark:
                     mark_value = (marks[mark] - zero) * coeff
@@ -185,7 +119,7 @@ class DumperItem:
                     pmn = mark_name
                     if len(mark_name) > 14:
                         pmn = mark_name[:5] + '...' + mark_name[-6:]
-                    # print mark vavue
+                    # print mark value
                     if abs(mark_value) >= 1000.0:
                         print("%14s = %7.0f %s\r\n" % (pmn, mark_value, unit), end='')
                     elif abs(mark_value) >= 100.0:
@@ -194,9 +128,7 @@ class DumperItem:
                         print("%14s = %7.2f %s\r\n" % (pmn, mark_value, unit), end='')
                     else:
                         print("%14s = %7.3f %s\r\n" % (pmn, mark_value, unit), end='')
-                    # output data format
-                    format = properties.get('format', ['%6.2f'])[0]
-                    out_str = "; %s = " % mark_name + format % mark_value + " %s" % unit
+                    out_str = ("; %s = " % mark_name) + (format % mark_value) + (" %s" % unit)
                     log_file.write(out_str)
 
         def save_properties(self, zip_file, folder, device_name):
@@ -251,3 +183,83 @@ class DumperItem:
                     s = fmt % (xs / ns, ys / ns)
                     outbuf += s.replace(",", ".")
             zip_file.writestr(zip_entry, outbuf)
+
+    def __init__(self, device_name: str):
+        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
+        self.name = device_name
+        self.active = False
+        self.device = None
+        self.time = time.time()
+        self.activate()
+
+    def new_shot(self):
+        return False
+
+    def activate(self):
+        if not self.active:
+            self.time = time.time()
+            try:
+                self.device = tango.DeviceProxy(self.name)
+                self.active = True
+                self.logger.debug("%s has been activated", self.name)
+            except:
+                self.device = None
+                self.active = False
+                self.logger.warning("%s activation error", self.name)
+                self.logger.debug('', exc_info=True)
+        return self.active
+
+    def save(self, log_file, zip_file, zip_folder=''):
+        raise NotImplemented()
+        # if not self.active:
+        #     self.logger.debug('Reading inactive device')
+        #     return
+
+    def property(self, prop_name):
+        try:
+            result = self.device.get_property(prop_name)[prop_name]
+            if len(result) == 1:
+                result = result[0]
+            return result
+            #return self.device.get_property(prop_name)[prop_name][0]
+        except:
+            return ''
+
+    def property_list(self, filter='*'):
+        return self.device.get_property_list(filter)
+
+    def properties(self, filter='*'):
+        # returns dictionary with device properties
+        names = self.device.get_property_list(filter)
+        return self.device.get_property(names)
+
+    @staticmethod
+    def config_logger(name: str = __name__, level: int = logging.DEBUG):
+        logger = logging.getLogger(name)
+        if not logger.hasHandlers():
+            logger.propagate = False
+            logger.setLevel(level)
+            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
+            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(log_formatter)
+            logger.addHandler(console_handler)
+        return logger
+
+    TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
+    FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
+
+    @staticmethod
+    def as_boolean(value):
+        if value.lower() in DumperItem.TRUE_VALUES:
+            return True
+        if value.lower() in DumperItem.FALSE_VALUES:
+            return False
+        return None
+
+    @staticmethod
+    def as_int(value):
+        try:
+            return int(value)
+        except:
+            return None

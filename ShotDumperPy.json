@@ -4,8 +4,8 @@
     "out_root_dir": "D:\\data\\",
     "devices": [
         {
-            "exec": "from TestDevice import TestDevice",
-            "eval": "TestDevice(5.0, 100)"
+            "exec": "from DumperTestDevice import DumperTestDevice",
+            "eval": "DumperTestDevice(5.0, 100)"
         }
     ],
     "shot": 7365,
