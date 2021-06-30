@@ -298,7 +298,7 @@ class AdlinkADC:
         return False
 
     def save_data(self, zip_file, chan):
-        entry = chan.dev.folder + "/" + chan.name + ".txt"
+        entry = chan.dev.zip_folder + "/" + chan.name + ".txt"
         avg = chan.get_prop_as_int("save_avg")
         if avg < 1:
             avg = 1
@@ -308,7 +308,7 @@ class AdlinkADC:
         zip_file.writestr(entry, buf)
 
     def save_prop(self, zip_file, chan):
-        entry = chan.dev.folder + "/" + "param" + chan.name + ".txt"
+        entry = chan.dev.zip_folder + "/" + "param" + chan.name + ".txt"
         buf = "Signal_Name=%s/%s\r\n" % (chan.dev.name(), chan.name)
         buf += "Shot=%d\r\n" % chan.dev.shot
         prop_list = ['%s=%s'%(k, chan.prop[k][0]) for k in chan.prop]
@@ -906,11 +906,11 @@ class ShotDumper:
         try:
             if not os.path.exists(of):
                 os.makedirs(of)
-                LOGGER.log(logging.DEBUG, "Output folder %s has been created", self.outFolder)
+                LOGGER.log(logging.DEBUG, "Output zip_folder %s has been created", self.outFolder)
             self.outFolder = of
             return True
         except:
-            LOGGER.log(logging.CRITICAL, "Can not create output folder %s", self.outFolder)
+            LOGGER.log(logging.CRITICAL, "Can not create output zip_folder %s", self.outFolder)
             self.outFolder = None
             return False
 

@@ -1,4 +1,4 @@
-from DumperDevice import *
+from DumperItem import *
 
 
 class TestDevice:
@@ -216,7 +216,7 @@ class AdlinkADC:
         return False
 
     def save_data(self, zip_file, chan):
-        entry = chan.dev.folder + "/" + chan.name + ".txt"
+        entry = chan.dev.zip_folder + "/" + chan.name + ".txt"
         avg = chan.get_prop_as_int("save_avg")
         if avg < 1:
             avg = 1
@@ -226,7 +226,7 @@ class AdlinkADC:
         zip_file.writestr(entry, buf)
 
     def save_prop(self, zip_file, chan):
-        entry = chan.dev.folder + "/" + "param" + chan.name + ".txt"
+        entry = chan.dev.zip_folder + "/" + "param" + chan.name + ".txt"
         buf = "Signal_Name=%s/%s\r\n" % (chan.dev.name(), chan.name)
         buf += "Shot=%d\r\n" % chan.dev.shot
         prop_list = ['%s=%s'%(k, chan.prop[k][0]) for k in chan.prop]

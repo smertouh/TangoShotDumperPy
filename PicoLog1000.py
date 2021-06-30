@@ -1,7 +1,7 @@
-from DumperDevice import *
+from DumperItem import *
 
 
-class PicoLog1000(DumperDevice):
+class PicoLog1000(DumperItem):
     def __init__(self, tango_device_name: str, folder='PicoLog'):
         super().__init__(tango_device_name, folder)
 
@@ -40,14 +40,14 @@ class PicoLog1000(DumperDevice):
                 slf = self.as_boolean(properties.get("save_log", ['False'])[0])
                 # save signal properties and data
                 if sdf or slf:
-                    chan.save_properties(zip_file, self.folder, self.name)
+                    chan.save_properties(zip_file, self.zip_folder, self.name)
                     chan.save_log(log_file)
                     if sdf:
                         # read data
                         chan.read_y()
                         # generate times values
                         chan.x = times + (i * sampling / len(channels_list))
-                        chan.save_data(zip_file, self.folder)
+                        chan.save_data(zip_file, self.zip_folder)
             except:
                 self.logger.warning("%s save exception" % self.name)
                 self.logger.debug('', exc_info=True)

@@ -1,8 +1,8 @@
 import time
-from DumperDevice import *
+from DumperItem import *
 
 
-class TestDevice(DumperDevice):
+class TestDevice(DumperItem):
     n = 0
 
     def __init__(self, delta_t=-1.0, points=0):

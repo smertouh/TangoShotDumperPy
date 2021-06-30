@@ -4,10 +4,93 @@ import numpy
 import tango
 
 
-class DumperDevice:
-    class Channel:
-        def __init__(self, device: tango.DeviceProxy, channel, prefix='channel_', format='%03i'):
-            self.device = device
+class DumperItem:
+    def __init__(self, device_name: str, zip_folder=None, **kwargs):
+        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
+        self.name = device_name
+        if zip_folder is None:
+            zip_folder = self.name.split('/')[-1]
+        if not zip_folder.endswith('/'):
+            zip_folder += '/'
+        self.zip_folder = zip_folder
+        self.active = False
+        self.tango_device = None
+        self.activate()
+
+    def new_shot(self):
+        return False
+
+    def activate(self):
+        if not self.active:
+            try:
+                self.tango_device = tango.DeviceProxy(self.name)
+                self.active = True
+                self.logger.debug("%s has been activated", self.name)
+            except:
+                self.tango_device = None
+                self.active = False
+                self.logger.warning("%s activation error", self.name)
+        return self.active
+
+    def save(self, log_file, zip_file, zip_folder=''):
+        raise NotImplemented()
+        # if not self.active:
+        #     self.logger.debug('Reading inactive device')
+        #     return
+
+    def property(self, prop_name):
+        try:
+            return self.tango_device.get_property(prop_name)[prop_name][0]
+        except:
+            return ''
+
+    def property_list(self, filter='*'):
+        return self.tango_device.get_property_list(filter)
+
+    def properties(self, filter='*'):
+        # returns dictionary with device properties
+        names = self.tango_device.get_property_list(filter)
+        return self.tango_device.get_property(names)
+
+    @staticmethod
+    def config_logger(name: str = __name__, level: int = logging.DEBUG):
+        logger = logging.getLogger(name)
+        if not logger.hasHandlers():
+            logger.propagate = False
+            logger.setLevel(level)
+            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
+            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(log_formatter)
+            logger.addHandler(console_handler)
+        return logger
+
+    TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
+    FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
+
+    @staticmethod
+    def as_boolean(value):
+        if value.lower() in DumperItem.TRUE_VALUES:
+            return True
+        if value.lower() in DumperItem.FALSE_VALUES:
+            return False
+        return None
+
+    @staticmethod
+    def as_int(value):
+        try:
+            return int(value)
+        except:
+            return None
+
+    class DumperItemChannel:
+        def __init__(self, device, channel, prefix='channel_', format='%03i'):
+            if isinstance(device, str):
+                self.device = DumperItem(device)
+            elif isinstance(device, DumperItem):
+                self.device = device
+            else:
+                raise Exception('Wrong device format')
             if type(channel) is int:
                 self.name = prefix + (format % channel)
             else:
@@ -125,7 +208,7 @@ class DumperDevice:
             zip_file.writestr(zip_entry, buf)
 
         def save_data(self, zip_file, folder):
-            zip_entry = folder +  self.name + ".txt"
+            zip_entry = folder + self.name + ".txt"
             avg = int(self.properties().get("save_avg", ['1'])[0])
             outbuf = ''
             if self.x is None:
@@ -168,76 +251,3 @@ class DumperDevice:
                     s = fmt % (xs / ns, ys / ns)
                     outbuf += s.replace(",", ".")
             zip_file.writestr(zip_entry, outbuf)
-
-    def __init__(self, device_or_attribute_name: str, folder=None):
-        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
-        self.name = device_or_attribute_name
-        if folder is None:
-            folder = self.name.split('/')[-1]
-        if not folder.endswith('/'):
-            folder += '/'
-        self.folder = folder
-        self.active = False
-        self.tango_device = None
-        self.activate()
-
-    def new_shot(self):
-        return False
-
-    def activate(self):
-        if not self.active:
-            try:
-                self.tango_device = tango.DeviceProxy(self.name)
-                self.active = True
-                self.logger.debug("%s has been activated", self.name)
-            except:
-                self.tango_device = None
-                self.active = False
-                self.logger.warning("%s activation error", self.name)
-        return self.active
-
-    def save(self, log_file, zip_file, zip_folder=''):
-        raise NotImplemented()
-        # if not self.active:
-        #     self.logger.debug('Reading inactive device')
-        #     return
-
-    def property(self, prop_name):
-        try:
-            return self.tango_device.get_property(prop_name)[prop_name][0]
-        except:
-            return ''
-
-    def property_list(self, filter='*'):
-        return self.tango_device.get_property_list(filter)
-
-    @staticmethod
-    def config_logger(name: str = __name__, level: int = logging.DEBUG):
-        logger = logging.getLogger(name)
-        if not logger.hasHandlers():
-            logger.propagate = False
-            logger.setLevel(level)
-            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(log_formatter)
-            logger.addHandler(console_handler)
-        return logger
-
-    TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
-    FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
-
-    @staticmethod
-    def as_boolean(value):
-        if value.lower() in DumperDevice.TRUE_VALUES:
-            return True
-        if value.lower() in DumperDevice.FALSE_VALUES:
-            return False
-        return None
-
-    @staticmethod
-    def as_int(value):
-        try:
-            return int(value)
-        except:
-            return None
