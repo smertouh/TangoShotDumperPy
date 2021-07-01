@@ -254,7 +254,7 @@ class TangoShotDumperServer(Device):
             # Open zip file
             self.zip_file = self.open_zip_file(self.out_dir)
             for item in self.device_list:
-                print("Saving %s" % item.name)
+                print("Saving from %s" % item.name)
                 try:
                     item.logger = self.logger
                 except:

@@ -84,7 +84,9 @@ class DumperItem:
                     pass
             return result
 
-        def save_log(self, log_file: IO, additional_marks={}):
+        def save_log(self, log_file: IO, additional_marks=None):
+            if additional_marks is None:
+                additional_marks = {}
             properties = self.properties()
             # Signal label = default mark name
             label = properties.get('label', [''])[0]
@@ -95,7 +97,10 @@ class DumperItem:
             # Units
             unit = properties.get('unit', [''])[0]
             # coefficient for conversion to units
-            coeff = float(properties.get('display_unit', ['1.0'])[0])
+            try:
+                coeff = float(properties.get('display_unit', ['1.0'])[0])
+            except:
+                coeff = 1.0
             # output data format
             format = properties.get('format', ['%6.2f'])[0]
             # process marks
@@ -116,13 +121,9 @@ class DumperItem:
                         mark_name = label
                     scaled_marks[mark_name] = (marks[mark] - zero) * coeff
             # print and save scaled_marks to log file
-            first_line = True
+            np = 0
             for mark in scaled_marks:
-                if first_line:
-                    print("%10s " % self.name, end='')
-                    first_line = False
-                else:
-                    print("%10s " % "  ", end='')
+                print("          ", end='')
                 # printed mark name
                 pmn = mark
                 mark_value = scaled_marks[mark]
@@ -139,7 +140,10 @@ class DumperItem:
                     print("%14s = %7.3f %s\r\n" % (pmn, mark_value, unit), end='')
                 out_str = ("; %s = " % mark) + (format % mark_value) + (" %s" % unit)
                 log_file.write(out_str)
+                np += 1
                 self.logger.debug('%s Saved to log: %s', self.name, out_str)
+            if np == 0:
+                print('          ', label, '---- no marks')
 
         def save_properties(self, zip_file: zipfile.ZipFile, zip_folder: str = ''):
             if not zip_folder.endswith('/'):
@@ -162,19 +166,23 @@ class DumperItem:
                 # save only y values
                 fmt = '%f'
                 fmtcrlf = fmt + '\r\n'
-                n = len(self.y)
-                ys = 0.0
-                ns = 0.0
-                for k in range(n):
-                    ys += self.y[k]
-                    ns += 1.0
-                    if ns >= avg:
-                        s = fmtcrlf % (ys / ns)
+                try:
+                    n = len(self.y)
+                    ys = 0.0
+                    ns = 0.0
+                    for k in range(n):
+                        ys += self.y[k]
+                        ns += 1.0
+                        if ns >= avg:
+                            s = fmtcrlf % (ys / ns)
+                            outbuf += s.replace(",", ".")
+                            ys = 0.0
+                            ns = 0.0
+                    if ns > 0:
+                        s = fmt % (ys / ns)
                         outbuf += s.replace(",", ".")
-                        ys = 0.0
-                        ns = 0.0
-                if ns > 0:
-                    s = fmt % (ys / ns)
+                except:
+                    s = fmt % self.y
                     outbuf += s.replace(",", ".")
             else:
                 # save "x; y" pairs
