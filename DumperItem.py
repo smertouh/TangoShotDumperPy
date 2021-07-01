@@ -7,7 +7,7 @@ import tango
 
 class DumperItem:
     class Channel:
-        def __init__(self, device: tango.DeviceProxy, channel, prefix='channely_', format='%03i'):
+        def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
             self.device = device
             if type(channel) is int:
                 self.name = prefix + (format % channel)
@@ -131,16 +131,20 @@ class DumperItem:
                     out_str = ("; %s = " % mark_name) + (format % mark_value) + (" %s" % unit)
                     log_file.write(out_str)
 
-        def save_properties(self, zip_file, zip_folder, device_name):
+        def save_properties(self, zip_file, zip_folder: str):
+            if not zip_folder.endswith('/'):
+                zip_folder += '/'
             zip_entry = zip_folder + "param" + self.name + ".txt"
-            buf = "Signal_Name=%s/%s\r\n" % (device_name, self.name)
+            buf = "Signal_Name=%s/%s\r\n" % (self.device.name(), self.name)
             properties = self.properties()
             for prop in properties:
                 buf += '%s=%s\r\n' % (prop, properties[prop][0])
             zip_file.writestr(zip_entry, buf)
 
-        def save_data(self, zip_file, folder):
-            zip_entry = folder + self.name + ".txt"
+        def save_data(self, zip_file, zip_folder: str):
+            if not zip_folder.endswith('/'):
+                zip_folder += '/'
+            zip_entry = zip_folder + self.name + ".txt"
             avg = int(self.properties().get("save_avg", ['1'])[0])
             outbuf = ''
             if self.x is None:
