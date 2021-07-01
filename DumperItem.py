@@ -138,7 +138,9 @@ class DumperItem:
                     print("%14s = %7.2f %s\r\n" % (pmn, mark_value, unit), end='')
                 else:
                     print("%14s = %7.3f %s\r\n" % (pmn, mark_value, unit), end='')
-                out_str = ("; %s = " % mark) + (format % mark_value) + (" %s" % unit)
+                out_str = ("; %s = " % mark) + (format % mark_value)
+                if unit != '':
+                    out_str += (" %s" % unit)
                 log_file.write(out_str)
                 np += 1
                 self.logger.debug('%s Saved to log: %s', self.name, out_str)
