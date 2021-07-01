@@ -1,5 +1,7 @@
 import time
 import logging
+import zipfile
+from typing import IO
 
 import numpy
 import tango
@@ -23,7 +25,7 @@ class DumperItem:
             self.y = self.y_attr.value
             return self.y
 
-        def read_x(self, x_name=None):
+        def read_x(self, x_name: str = None):
             if x_name is None:
                 x_name = self.name.replace('y', 'x')
             if x_name == self.name:
@@ -47,7 +49,7 @@ class DumperItem:
             except:
                 return {}
 
-        def property(self, property_name):
+        def property(self, property_name: str):
             result = self.properties().get(property_name, [''])
             if len(result) == 1:
                 result = result[0]
@@ -81,7 +83,7 @@ class DumperItem:
                     pass
             return result
 
-        def save_log(self, log_file):
+        def save_log(self, log_file: IO):
             properties = self.properties()
             # Signal label = default mark name
             label = properties.get('label', [''])[0]
@@ -131,7 +133,7 @@ class DumperItem:
                     out_str = ("; %s = " % mark_name) + (format % mark_value) + (" %s" % unit)
                     log_file.write(out_str)
 
-        def save_properties(self, zip_file, zip_folder: str):
+        def save_properties(self, zip_file: zipfile.ZipFile, zip_folder: str = ''):
             if not zip_folder.endswith('/'):
                 zip_folder += '/'
             zip_entry = zip_folder + "param" + self.name + ".txt"
@@ -141,7 +143,7 @@ class DumperItem:
                 buf += '%s=%s\r\n' % (prop, properties[prop][0])
             zip_file.writestr(zip_entry, buf)
 
-        def save_data(self, zip_file, zip_folder: str):
+        def save_data(self, zip_file: zipfile.ZipFile, zip_folder: str = ''):
             if not zip_folder.endswith('/'):
                 zip_folder += '/'
             zip_entry = zip_folder + self.name + ".txt"
@@ -213,13 +215,13 @@ class DumperItem:
                 self.logger.debug('', exc_info=True)
         return self.active
 
-    def save(self, log_file, zip_file, zip_folder=''):
+    def save(self, log_file: IO, zip_file: zipfile.ZipFile, zip_folder: str = None):
         raise NotImplemented()
         # if not self.active:
         #     self.logger.debug('Reading inactive device')
         #     return
 
-    def property(self, prop_name):
+    def property(self, prop_name: str):
         try:
             result = self.device.get_property(prop_name)[prop_name]
             if len(result) == 1:
@@ -229,10 +231,10 @@ class DumperItem:
         except:
             return ''
 
-    def property_list(self, filter='*'):
+    def property_list(self, filter: str = '*'):
         return self.device.get_property_list(filter)
 
-    def properties(self, filter='*'):
+    def properties(self, filter: str = '*'):
         # returns dictionary with device properties
         names = self.device.get_property_list(filter)
         return self.device.get_property(names)
@@ -254,7 +256,7 @@ class DumperItem:
     FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
 
     @staticmethod
-    def as_boolean(value):
+    def as_boolean(value: str):
         if value.lower() in DumperItem.TRUE_VALUES:
             return True
         if value.lower() in DumperItem.FALSE_VALUES:
@@ -262,7 +264,7 @@ class DumperItem:
         return None
 
     @staticmethod
-    def as_int(value):
+    def as_int(value: str):
         try:
             return int(value)
         except:

@@ -213,7 +213,7 @@ class TangoShotDumperServer(Device):
         self.lock_file = None
         self.logger.debug("Directory unlocked")
 
-    def open_log_file(self, folder=''):
+    def open_log_file(self, folder: str = ''):
         logf = open(os.path.join(folder, self.get_log_file_name()), 'a')
         return logf
 
