@@ -2,12 +2,11 @@ from DumperItem import *
 
 
 class TangoAttribute(DumperItem):
-    def __init__(self, device_name, attribute_name, zip_folder=None, force=True, ahead=None):
+    def __init__(self, device_name, attribute_name, zip_folder=None, force=True):
         super().__init__(device_name)
         self.attribute_name = attribute_name
         self.folder = zip_folder
         self.force = force
-        self.ahead = ahead
         # self.retry_count = 3
         self.channel = DumperItem.Channel(self.device, attribute_name)
         self.channel.logger = self.logger
