@@ -123,7 +123,7 @@ class TangoShotDumperServer(Device):
                 except:
                     self.logger.warning("Error in %s initialization" % str(unit))
                     self.logger.debug('', exc_info=True)
-            self.logger.info('Configuration restored from %s' % file_name)
+            self.logger.debug('Configuration restored from %s' % file_name)
             return True
         except:
             self.logger.info('Configuration read error from %s' % file_name)
@@ -135,7 +135,7 @@ class TangoShotDumperServer(Device):
             self.config['shot'] = self.shot
             with open(file_name, 'w') as configfile:
                 configfile.write(json.dumps(self.config, indent=4))
-            self.logger.info('Configuration saved to %s' % file_name)
+            self.logger.debug('Configuration saved to %s' % file_name)
         except:
             self.logger.info('Configuration save error to %s' % file_name)
             self.logger.debug('', exc_info=True)

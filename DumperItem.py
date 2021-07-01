@@ -10,6 +10,7 @@ import tango
 class DumperItem:
     class Channel:
         def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
+            self.logger = DumperItem.config_logger(name=__name__, level=logging.DEBUG)
             self.device = device
             if type(channel) is int:
                 self.name = prefix + (format % channel)
@@ -101,37 +102,41 @@ class DumperItem:
             marks = self.mark_values()
             # Find zero value
             zero = marks.get('zero', 0.0)
-            # Convert all marks to mark_value = (mark - zero)*coeff print and save to log file
-            first_line = True
+            # Convert all marks to mark_value = (mark - zero)*coeff
+            scaled_marks = {}
             for mark in marks:
                 # If it is not zero mark
                 if not "zero" == mark:
-                    mark_value = (marks[mark] - zero) * coeff
                     mark_name = mark
                     # Default mark renamed to label
                     if mark_name == "mark":
                         mark_name = label
-                    # Print mark name = value
-                    if first_line:
-                        print("%10s " % self.name, end='')
-                        first_line = False
-                    else:
-                        print("%10s " % "  ", end='')
-                    # printed mark name
-                    pmn = mark_name
-                    if len(mark_name) > 14:
-                        pmn = mark_name[:5] + '...' + mark_name[-6:]
-                    # print mark value
-                    if abs(mark_value) >= 1000.0:
-                        print("%14s = %7.0f %s\r\n" % (pmn, mark_value, unit), end='')
-                    elif abs(mark_value) >= 100.0:
-                        print("%14s = %7.1f %s\r\n" % (pmn, mark_value, unit), end='')
-                    elif abs(mark_value) >= 10.0:
-                        print("%14s = %7.2f %s\r\n" % (pmn, mark_value, unit), end='')
-                    else:
-                        print("%14s = %7.3f %s\r\n" % (pmn, mark_value, unit), end='')
-                    out_str = ("; %s = " % mark_name) + (format % mark_value) + (" %s" % unit)
-                    log_file.write(out_str)
+                    scaled_marks[mark_name] = (marks[mark] - zero) * coeff
+            # print and save scaled_marks to log file
+            first_line = True
+            for mark in scaled_marks:
+                if first_line:
+                    print("%10s " % self.name, end='')
+                    first_line = False
+                else:
+                    print("%10s " % "  ", end='')
+                # printed mark name
+                pmn = mark
+                mark_value = scaled_marks[mark]
+                if len(mark) > 14:
+                    pmn = mark[:5] + '...' + mark[-6:]
+                # print mark value
+                if abs(mark_value) >= 1000.0:
+                    print("%14s = %7.0f %s\r\n" % (pmn, mark_value, unit), end='')
+                elif abs(mark_value) >= 100.0:
+                    print("%14s = %7.1f %s\r\n" % (pmn, mark_value, unit), end='')
+                elif abs(mark_value) >= 10.0:
+                    print("%14s = %7.2f %s\r\n" % (pmn, mark_value, unit), end='')
+                else:
+                    print("%14s = %7.3f %s\r\n" % (pmn, mark_value, unit), end='')
+                out_str = ("; %s = " % mark) + (format % mark_value) + (" %s" % unit)
+                log_file.write(out_str)
+                self.logger.debug('%s Saved to log: %s', self.name, out_str)
 
         def save_properties(self, zip_file: zipfile.ZipFile, zip_folder: str = ''):
             if not zip_folder.endswith('/'):
@@ -142,6 +147,7 @@ class DumperItem:
             for prop in properties:
                 buf += '%s=%s\r\n' % (prop, properties[prop][0])
             zip_file.writestr(zip_entry, buf)
+            self.logger.debug('%s Properties saved to %s', self.name, zip_entry)
 
         def save_data(self, zip_file: zipfile.ZipFile, zip_folder: str = ''):
             if not zip_folder.endswith('/'):
@@ -189,6 +195,7 @@ class DumperItem:
                     s = fmt % (xs / ns, ys / ns)
                     outbuf += s.replace(",", ".")
             zip_file.writestr(zip_entry, outbuf)
+            self.logger.debug('%s Data saved to %s', self.name, zip_entry)
 
     def __init__(self, device_name: str):
         self.logger = self.config_logger(name=__name__, level=logging.DEBUG)

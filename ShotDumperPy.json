@@ -6,8 +6,12 @@
         {
             "exec": "from DumperTestDevice import DumperTestDevice",
             "eval": "DumperTestDevice(5.0, 100)"
+        },
+        {
+            "exec": "from TangoAttribute import TangoAttribute",
+            "eval": "TangoAttribute('sys/tg_test/1', 'double_spectrum_ro', 'tangotest')"
         }
     ],
-    "shot": 7365,
-    "shot_time": "2021-06-30 10:07:35"
+    "shot": 7373,
+    "shot_time": "2021-07-01 09:37:50"
 }
