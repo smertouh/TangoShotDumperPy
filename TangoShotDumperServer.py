@@ -26,9 +26,15 @@ class TangoShotDumperServer(Device):
 
     shot_number = attribute(label="shot_number", dtype=int,
                             display_level=DispLevel.OPERATOR,
-                            access=AttrWriteType.READ_WRITE,
+                            access=AttrWriteType.READ,
                             unit="", format="%d",
                             doc="Shot number")
+
+    shot_time = attribute(label="shot_time", dtype=float,
+                          display_level=DispLevel.OPERATOR,
+                          access=AttrWriteType.READ,
+                          unit="s", format="%d",
+                          doc="Shot time")
 
     def init_device(self):
         # set default properties
@@ -40,6 +46,7 @@ class TangoShotDumperServer(Device):
         self.out_dir = None
         self.locked = False
         self.shot_number_value = 0
+        self.shot_time_value = 0.0
         # read config
         try:
             self.set_state(DevState.INIT)
@@ -55,7 +62,12 @@ class TangoShotDumperServer(Device):
             except:
                 n = 0
             self.write_shot_number(n)
-            # devices = self.get_device_property('devices', '{}')
+            # read shot time
+            try:
+                t = int(self.get_device_property('shot_time', '0.0'))
+            except:
+                t = 0.0
+            self.write_shot_time(t)
             if self not in TangoShotDumperServer.server_device_list:
                 TangoShotDumperServer.server_device_list.append(self)
             print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
@@ -72,6 +84,13 @@ class TangoShotDumperServer(Device):
     def write_shot_number(self, value):
         self.set_device_property('shot_number', str(value))
         self.shot_number_value = value
+
+    def read_shot_time(self):
+        return self.shot_time_value
+
+    def write_shot_time(self, value):
+        self.set_device_property('shot_time', str(value))
+        self.shot_time_value = value
 
     def get_device_property(self, prop: str, default=None):
         try:
@@ -177,6 +196,10 @@ class TangoShotDumperServer(Device):
         for item in self.device_list:
             try:
                 if item.new_shot():
+                    self.shot_number_value += 1
+                    self.write_shot_number(self.shot_number_value)
+                    self.shot_time_value = time.time()
+                    self.write_shot_time(self.shot_time_value)
                     return True
             except:
                 # self.device_list.remove(item)
