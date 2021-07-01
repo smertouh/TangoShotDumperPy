@@ -16,8 +16,12 @@
         },
         {
             "eval": "TangoAttribute('sys/tg_test/1', 'double_image_ro', 'tangotest')"
+        },
+        {
+            "exec": "from PicoLog1000 import PicoLog1000",
+            "eval": "PicoLog1000('binp/nbi/picolog1')"
         }
     ],
-    "shot": 7414,
-    "shot_time": "2021-07-01 12:48:26"
+    "shot": 7441,
+    "shot_time": "2021-07-01 16:25:06"
 }

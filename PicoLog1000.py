@@ -27,14 +27,14 @@ class PicoLog1000(DumperItem):
         sampling = self.device.read_attribute('sampling').value
         points = self.device.read_attribute('points_per_channel').value
         # generate times array
-        times = numpy.linspace(0, (points - 1) * sampling, points, dtype=numpy.float32)
+        times = numpy.linspace(0, (points - 1) * sampling, points, dtype=numpy.float64)
         if trigger < points:
             trigger_offset = times[trigger]
             times -= trigger_offset
         # save channels data and properties
         for i, number in enumerate(channels_list):
             try:
-                chan = PicoLog1000.Channel(self.device, number)
+                chan = PicoLog1000.Channel(self.device, number, format='%02i')
                 properties = chan.properties()
                 # read flags
                 sdf = self.as_boolean(properties.get("save_data", ['False'])[0])
