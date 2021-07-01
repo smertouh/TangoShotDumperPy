@@ -84,7 +84,7 @@ class DumperItem:
                     pass
             return result
 
-        def save_log(self, log_file: IO):
+        def save_log(self, log_file: IO, additional_marks={}):
             properties = self.properties()
             # Signal label = default mark name
             label = properties.get('label', [''])[0]
@@ -102,6 +102,9 @@ class DumperItem:
             marks = self.mark_values()
             # Find zero value
             zero = marks.get('zero', 0.0)
+            # add additional marks
+            for mark in additional_marks:
+                marks[mark] = additional_marks[mark]
             # Convert all marks to mark_value = (mark - zero)*coeff
             scaled_marks = {}
             for mark in marks:
