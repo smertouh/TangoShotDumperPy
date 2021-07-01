@@ -14,8 +14,8 @@ import json
 import zipfile
 
 import tango
-from tango import DevState
-from tango.server import Device
+from tango import AttrQuality, AttrWriteType, DispLevel, DevState
+from tango.server import Device, attribute, command, pipe, device_property
 
 NaN = float('nan')
 
@@ -23,6 +23,12 @@ NaN = float('nan')
 class TangoShotDumperServer(Device):
     version = '1.0'
     server_device_list = []
+
+    shot_number = attribute(label="shot_number", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="", format="%d",
+                            doc="Shot number")
 
     def init_device(self):
         # set default properties
@@ -33,6 +39,7 @@ class TangoShotDumperServer(Device):
         self.out_root_dir = '.\\data\\'
         self.out_dir = None
         self.locked = False
+        self.shot_number_value = 0
         # read config
         try:
             self.set_state(DevState.INIT)
@@ -42,6 +49,12 @@ class TangoShotDumperServer(Device):
             # read config from file
             self.config_file = self.get_device_property('config_file', 'ShotDumperPy.json')
             self.read_config(self.config_file)
+            # read shot number
+            try:
+                n = int(self.get_device_property('shot_number', '0'))
+            except:
+                n = 0
+            self.write_shot_number(n)
             # devices = self.get_device_property('devices', '{}')
             if self not in TangoShotDumperServer.server_device_list:
                 TangoShotDumperServer.server_device_list.append(self)
@@ -53,9 +66,16 @@ class TangoShotDumperServer(Device):
             self.logger.debug('', exc_info=True)
             self.set_state(DevState.FAULT)
 
+    def read_shot_number(self):
+        return self.shot_number_value
+
+    def write_shot_number(self, value):
+        self.set_device_property('shot_number', str(value))
+        self.shot_number_value = value
+
     def get_device_property(self, prop: str, default=None):
         try:
-            #self.assert_proxy()
+            # self.assert_proxy()
             pr = self.device_proxy.get_property(prop)[prop]
             result = None
             if len(pr) > 0:
@@ -73,7 +93,7 @@ class TangoShotDumperServer(Device):
 
     def set_device_property(self, prop: str, value: str):
         try:
-            #self.assert_proxy()
+            # self.assert_proxy()
             self.device_proxy.put_property({prop: value})
         except:
             self.logger.info('Error writing property %s for %s', prop, self.device_name)
@@ -207,8 +227,8 @@ class TangoShotDumperServer(Device):
 
     def unlock_output_dir(self):
         if self.lock_file is not None:
-           self.lock_file.close()
-           os.remove(self.lock_file.name)
+            self.lock_file.close()
+            os.remove(self.lock_file.name)
         self.locked = False
         self.lock_file = None
         self.logger.debug("Directory unlocked")
