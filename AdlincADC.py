@@ -5,7 +5,6 @@ class AdlinkADC(DumperItem):
     def __init__(self, device_name='binp/nbi/adc0', zip_folder="ADC_0"):
         super().__init__(device_name)
         self.folder = zip_folder
-        self.avg = avg
         self.shot = self.read_shot()
 
     def read_shot(self):
