@@ -28,13 +28,13 @@ class TangoAttribute(DumperItem):
             self.channel.read_y()
             self.channel.read_x()
             if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.IMAGE:
-                self.logger.debug("IMAGE attribute %s" % self.attribute_name)
+                # self.logger.debug("IMAGE attribute %s" % self.attribute_name)
                 self.channel.x = self.channel.y_attr.value[1,:]
                 self.channel.y = self.channel.y_attr.value[0, :]
         if slf:
             addition = {}
             if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.SCALAR:
-                self.logger.debug("SCALAR attribute %s" % self.attribute_name)
+                # self.logger.debug("SCALAR attribute %s" % self.attribute_name)
                 addition = {'mark': self.channel.y_attr.value}
             self.channel.save_log(log_file, addition)
         if sdf:
