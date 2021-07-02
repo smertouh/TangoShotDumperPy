@@ -52,7 +52,7 @@ class DumperItem:
                 self.properties = db.get_device_attribute_property(self.device.name(), self.name)[self.name]
             except:
                 self.properties = {}
-                return self.properties
+            return self.properties
 
         def property(self, property_name: str):
             self.read_properties()

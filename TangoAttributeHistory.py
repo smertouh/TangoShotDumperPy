@@ -3,15 +3,16 @@ import time
 import numpy
 import tango
 
-import TangoAttribute
+from TangoAttribute import TangoAttribute
 
 
 class TangoAttributeHistory(TangoAttribute):
     def __init__(self, device_name, attribute_name, folder=None, delta_t=10.0):
-        super().__init__(self, device_name, attribute_name, folder, True)
+        super().__init__(device_name, attribute_name, folder, True)
         self.delta_t = delta_t
 
     def read_attribute(self):
+        self.channel.read_y()
         self.channel.y = None
         self.channel.x = None
         if not self.channel.y_attr.data_format == tango._tango.AttrDataFormat.SCALAR:
@@ -30,7 +31,7 @@ class TangoAttributeHistory(TangoAttribute):
         y = numpy.zeros(n)
         x = numpy.zeros(n)
         for i, h in enumerate(history):
-            if h.AttrQuality != tango._tango.AttrQuality.ATTR_VALID:
+            if h.quality != tango._tango.AttrQuality.ATTR_VALID:
                 y[i] = numpy.nan
             else:
                 y[i] = h.value
@@ -42,44 +43,3 @@ class TangoAttributeHistory(TangoAttribute):
             return
         self.channel.y = y[index]
         self.channel.x = x[index]
-# get_attribute_poll_period polling period in milliseconds
-#
-# polling_status(self) → sequence<str>
-#
-#         Return the device polling status.
-#
-#     Parameters
-#
-#         None
-#     Return
-#
-#         (sequence<str>) One string for each polled command/attribute. Each string is multi-line string with:
-#
-#                 attribute/command name
-#
-#                 attribute/command polling period in milliseconds
-#
-#                 attribute/command polling ring buffer
-#
-#                 time needed for last attribute/command execution in milliseconds
-#
-#                 time since data in the ring buffer has not been updated
-#
-#                 delta time between the last records in the ring buffer
-#
-#                 exception parameters in case of the last execution failed
-#
-#
- # get_attr_poll_ring_depth(self, attr_name) → int
- #
- #    Returns the attribute poll ring depth.
- #
- #    Parameters
- #
- #        attr_name (str) – the attribute name
- #    Returns
- #
- #        the attribute poll ring depth
- #    Return type
- #
- #        int

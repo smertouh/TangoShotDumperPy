@@ -160,7 +160,7 @@ class TangoShotDumperServer(Device):
                     else:
                         self.logger.info("No 'eval' option for %s" % unit)
                 except:
-                    self.logger.warning("Error in %s initialization" % str(unit))
+                    self.logger.warning("Error in %s" % str(unit))
                     self.logger.debug('', exc_info=True)
             self.logger.debug('Configuration restored from %s' % file_name)
             return True

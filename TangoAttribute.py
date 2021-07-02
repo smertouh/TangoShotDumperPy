@@ -43,3 +43,4 @@ class TangoAttribute(DumperItem):
         elif self.channel.y_attr.data_format != tango._tango.AttrDataFormat.SCALAR:
             self.channel.read_x()
 
+

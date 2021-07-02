@@ -33,7 +33,7 @@ class DumperTestDevice(DumperItem):
             return True
         return False
 
-    def save(self, log_file, zip_file, folder=None):
+    def save(self, log_file, zip_file, folder=''):
         log_file.write('; %s=%f' % (self.name, self.time))
         print('          %s = %f' % (self.name, self.time))
         if self.points > 0:
