@@ -20,6 +20,7 @@ class DumperItem:
             self.y_attr = None
             self.x = None
             self.x_attr = None
+            self.properties = None
 
         def read_y(self):
             self.y_attr = self.device.read_attribute(self.name)
@@ -42,22 +43,26 @@ class DumperItem:
                 self.x = None
                 return self.x
 
-        def properties(self):
+        def read_properties(self, force=False):
             # returns dictionary with attribute properties for channel attribute
+            if self.properties is not None and not force:
+                return self.properties
             try:
                 db = self.device.get_device_db()
-                return db.get_device_attribute_property(self.device.name(), self.name)[self.name]
+                self.properties = db.get_device_attribute_property(self.device.name(), self.name)[self.name]
             except:
-                return {}
+                self.properties = {}
+                return self.properties
 
         def property(self, property_name: str):
-            result = self.properties().get(property_name, [''])
+            self.read_properties()
+            result = self.properties.get(property_name, [''])
             if len(result) == 1:
                 result = result[0]
             return result
 
         def marks(self):
-            properties = self.properties()
+            properties = self.read_properties()
             result = {}
             for p_key in properties:
                 if p_key.endswith("_start"):
@@ -87,22 +92,22 @@ class DumperItem:
         def save_log(self, log_file: IO, additional_marks=None):
             if additional_marks is None:
                 additional_marks = {}
-            properties = self.properties()
+            self.read_properties()
             # Signal label = default mark name
-            label = properties.get('label', [''])[0]
+            label = self.properties.get('label', [''])[0]
             if '' == label:
-                label = properties.get('name', [''])[0]
+                label = self.properties.get('name', [''])[0]
             if '' == label:
                 label = self.name
             # Units
-            unit = properties.get('unit', [''])[0]
+            unit = self.properties.get('unit', [''])[0]
             # coefficient for conversion to units
             try:
-                coeff = float(properties.get('display_unit', ['1.0'])[0])
+                coeff = float(self.properties.get('display_unit', ['1.0'])[0])
             except:
                 coeff = 1.0
             # output data format
-            format = properties.get('format', ['%6.2f'])[0]
+            format = self.properties.get('format', ['%6.2f'])[0]
             # process marks
             marks = self.mark_values()
             # Find zero value
@@ -152,7 +157,7 @@ class DumperItem:
                 folder += '/'
             zip_entry = folder + "param" + self.name + ".txt"
             buf = "Signal_Name=%s/%s\r\n" % (self.device.name(), self.name)
-            properties = self.properties()
+            properties = self.read_properties()
             for prop in properties:
                 buf += '%s=%s\r\n' % (prop, properties[prop][0])
             zip_file.writestr(zip_entry, buf)
@@ -162,7 +167,7 @@ class DumperItem:
             if not folder.endswith('/'):
                 folder += '/'
             zip_entry = folder + self.name + ".txt"
-            avg = int(self.properties().get("save_avg", ['1'])[0])
+            avg = int(self.read_properties().get("save_avg", ['1'])[0])
             outbuf = ''
             if self.x is None:
                 # save only y values

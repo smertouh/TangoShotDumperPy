@@ -44,7 +44,7 @@ class AdlinkADC(DumperItem):
                         channel = DumperItem.Channel(self.device, attr)
                         channel.logger = self.logger
                         # Read save_data and save_log flags
-                        properties = channel.properties()
+                        properties = channel.read_properties()
                         sdf = properties.get("save_data", [False])[0]
                         slf = properties.get("save_log", [False])[0]
                         # Save signal properties
@@ -60,7 +60,7 @@ class AdlinkADC(DumperItem):
                             channel.save_data(zip_file, folder)
                         break
                     except:
-                        self.logger.warning("%s data save exception" % self.name)
+                        self.logger.warning("%s channel save exception" % self.name)
                         self.logger.debug('', exc_info=True)
                         retry_count -= 1
                     if retry_count > 0:

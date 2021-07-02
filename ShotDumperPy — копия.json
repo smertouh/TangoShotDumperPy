@@ -1,7 +1,7 @@
 {
     "sleep": 1.0,
-    "Loglevel": 40,
-    "outDir": "D:\\data\\",
+    "log_level": 40,
+    "out_root_dir": "D:\\data\\",
     "devices": [
         {
             "eval": "AdlinkADC(dev='binp/nbi/adc0', avg=100, folder='ADC_0')"
@@ -25,8 +25,8 @@
             "eval": "TangoAttribute('bias','programmed_voltage', folder='TDK')"
         },
         {
-            "exec": "from maxhistory import TangoAttributemax",
-            "eval": "TangoAttributemax('et7000_server/test/pet7_7026','ai05', folder='Calorimeter')"
+            "exec": "from TangoAttributeMax import TangoAttributeMax",
+            "eval": "TangoAttributeMax('et7000_server/test/pet7_7026','ai05', folder='Calorimeter')"
         },
         {
             "exec": "from TangoAttributeIntegral import TangoAttributeIntegral",
@@ -42,8 +42,8 @@
             "eval": "TangoAttributeIntegral('et7000_server/test/pet17_7018','ai03', folder='CalorimeterWater')"
         },
         {
-            "exec": "from minhistory import TangoAttributemin",
-            "eval": "TangoAttributemin('et7000_server/test/pet9_7026','ai00', folder='Ustmin')"
+            "exec": "from TangoAttributeMin import TangoAttributeMin",
+            "eval": "TangoAttributeMin('et7000_server/test/pet9_7026','ai00', folder='Ustmin')"
         },
         {
             "eval": "TangoAttribute('et7000_server/test/pet2_7015','ai02', folder='Calorimeter')"
@@ -136,95 +136,95 @@
             "eval": "TangoAttribute('auto/manual_write/scalar_atr','QMAG2', folder='Scalaratr')"
         },
         {
-            "exec": "from peak2peak import TangoAttributepeak2peak",
-            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai00', folder='BCandBPM')"
+            "exec": "from TangoAttributeP2P import TangoAttributeP2P",
+            "eval": "TangoAttributeP2P('et7000_server/test/1','ai00', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai01', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/1','ai01', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai02', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/1','ai02', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai03', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/1','ai03', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai04', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/1','ai04', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai05', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/1','ai05', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai06', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/1','ai06', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai07', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/1','ai07', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai00', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet3_7018','ai00', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai01', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet3_7018','ai01', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai02', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet3_7018','ai02', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai03', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet3_7018','ai03', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai04', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet3_7018','ai04', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai05', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet3_7018','ai05', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai06', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet3_7018','ai06', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai07', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet3_7018','ai07', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet12_7018','ai00', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet12_7018','ai00', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet12_7018','ai01', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet12_7018','ai01', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet12_7018','ai02', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet12_7018','ai02', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet12_7018','ai03', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P'et7000_server/test/pet12_7018','ai03', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributemax('et7000_server/test/1','ai09', folder='BCandBPM')"
+            "eval": "TangoAttributeMax('et7000_server/test/1','ai09', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet7_7026','ai00', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet7_7026','ai00', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet7_7026','ai01', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet7_7026','ai01', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet7_7026','ai02', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet7_7026','ai02', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet7_7026','ai03', folder='BCandBPM')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet7_7026','ai03', folder='BCandBPM')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet15_7018','ai00', folder='tube')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet15_7018','ai00', folder='tube')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet15_7018','ai01', folder='tube')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet15_7018','ai01', folder='tube')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet15_7018','ai02', folder='tube')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet15_7018','ai02', folder='tube')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet15_7018','ai03', folder='tube')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet15_7018','ai03', folder='tube')"
         },
         {
-            "eval": "TangoAttributepeak2peak('et7000_server/test/pet16_7018','ai00', folder='HV')"
+            "eval": "TangoAttributeP2P('et7000_server/test/pet16_7018','ai00', folder='HV')"
         },
         {
             "eval": "TangoAttribute('binp/CS/bot','UOvenr', folder='Csbot')"
