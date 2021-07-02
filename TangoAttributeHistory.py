@@ -13,6 +13,12 @@ class TangoAttributeHistory(TangoAttribute):
 
     def read_attribute(self):
         self.channel.read_y()
+        label = self.channel.properties.get('label', [''])[0]
+        if '' == label:
+            label = self.channel.properties.get('name', [''])[0]
+        if '' == label:
+            label = self.channel.name
+        self.channel.properties['label'] = [label + '_history']
         self.channel.y = None
         self.channel.x = None
         if not self.channel.y_attr.data_format == tango._tango.AttrDataFormat.SCALAR:

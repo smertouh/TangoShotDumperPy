@@ -15,7 +15,7 @@ class TangoAttribute(DumperItem):
         if folder is None:
             folder = self.folder
         # save_data and save_log flags
-        properties = self.channel.read_properties()
+        properties = self.channel.read_properties(True)
         sdf = properties.get("save_data", [False])[0]
         slf = properties.get("save_log", [False])[0]
         # force save if requested during attribute creation

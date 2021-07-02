@@ -132,8 +132,8 @@ class DumperItem:
                 # printed mark name
                 pmn = mark
                 mark_value = scaled_marks[mark]
-                if len(mark) > 14:
-                    pmn = mark[:5] + '...' + mark[-6:]
+                # if len(mark) > 14:
+                #     pmn = mark[:5] + '...' + mark[-6:]
                 # print mark value
                 if abs(mark_value) >= 1000.0:
                     print("%14s = %7.0f %s\r\n" % (pmn, mark_value, unit), end='')
