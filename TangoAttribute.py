@@ -23,13 +23,14 @@ class TangoAttribute(DumperItem):
             sdf = True
             slf = True
         if sdf or slf:
-            self.channel.save_properties(zip_file, folder)
             self.read_attribute()
+            self.channel.save_properties(zip_file, folder)
         if slf:
             addition = {}
             if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.SCALAR:
                 # self.logger.debug("SCALAR attribute %s" % self.attribute_name)
-                addition = {'mark': self.channel.y_attr.value}
+                if properties.get("history", [False])[0] != 'True':
+                    addition = {'mark': self.channel.y_attr.value}
             self.channel.save_log(log_file, addition)
         if sdf:
             self.channel.save_data(zip_file, folder)

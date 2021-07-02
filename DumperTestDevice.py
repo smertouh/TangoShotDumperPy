@@ -35,7 +35,7 @@ class DumperTestDevice(DumperItem):
 
     def save(self, log_file, zip_file, folder=''):
         log_file.write('; %s=%f' % (self.name, self.time))
-        print('          %s = %f' % (self.name, self.time))
+        print('    %s = %f' % (self.name, self.time))
         if self.points > 0:
             buf = ""
             for k in range(self.points):

@@ -16,6 +16,7 @@ class DumperItem:
                 self.name = prefix + (format % channel)
             else:
                 self.name = str(channel)
+            self.file_name = self.name
             self.y = None
             self.y_attr = None
             self.x = None
@@ -82,8 +83,8 @@ class DumperItem:
             mrk = self.marks()
             for key in mrk:
                 try:
-                    rng = mrk[key]
-                    index = numpy.logical_and(self.x >= rng[0], self.x <= rng[1])
+                    range = mrk[key]
+                    index = numpy.logical_and(self.x >= range[0], self.x <= range[1])
                     result[key] = self.y[index].mean()
                 except:
                     pass
@@ -98,7 +99,7 @@ class DumperItem:
             if '' == label:
                 label = self.properties.get('name', [''])[0]
             if '' == label:
-                label = self.name
+                label = self.file_name
             # Units
             unit = self.properties.get('unit', [''])[0]
             # coefficient for conversion to units
@@ -128,7 +129,7 @@ class DumperItem:
             # print and save scaled_marks to log file
             np = 0
             for mark in scaled_marks:
-                print("          ", end='')
+                print("    ", end='')
                 # printed mark name
                 pmn = mark
                 mark_value = scaled_marks[mark]
@@ -148,14 +149,14 @@ class DumperItem:
                     out_str += (" %s" % unit)
                 log_file.write(out_str)
                 np += 1
-                self.logger.debug('%s Saved to log: %s', self.name, out_str)
             if np == 0:
-                print('          ', label, '---- no marks')
+                print('    ', label, '---- no marks')
+            self.logger.debug('%s Log Saved', self.name)
 
         def save_properties(self, zip_file: zipfile.ZipFile, folder: str = ''):
             if not folder.endswith('/'):
                 folder += '/'
-            zip_entry = folder + "param" + self.name + ".txt"
+            zip_entry = folder + "param" + self.file_name + ".txt"
             buf = "Signal_Name=%s/%s\r\n" % (self.device.name(), self.name)
             properties = self.read_properties()
             for prop in properties:
@@ -166,7 +167,7 @@ class DumperItem:
         def save_data(self, zip_file: zipfile.ZipFile, folder: str = ''):
             if not folder.endswith('/'):
                 folder += '/'
-            zip_entry = folder + self.name + ".txt"
+            zip_entry = folder + self.file_name + ".txt"
             avg = int(self.read_properties().get("save_avg", ['1'])[0])
             outbuf = ''
             if self.x is None:

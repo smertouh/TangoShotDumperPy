@@ -7,22 +7,18 @@ from TangoAttribute import TangoAttribute
 
 
 class TangoAttributeHistory(TangoAttribute):
-    def __init__(self, device_name, attribute_name, folder=None, delta_t=10.0):
+    def __init__(self, device_name, attribute_name, folder=None, delta_t=120.0):
         super().__init__(device_name, attribute_name, folder, True)
         self.delta_t = delta_t
 
     def read_attribute(self):
         self.channel.read_y()
-        label = self.channel.properties.get('label', [''])[0]
-        if '' == label:
-            label = self.channel.properties.get('name', [''])[0]
-        if '' == label:
-            label = self.channel.name
-        self.channel.properties['label'] = [label + '_history']
         self.channel.y = None
         self.channel.x = None
+        self.channel.file_name = self.channel.name + '_history'
+        self.channel.properties['history'] =['True']
         if not self.channel.y_attr.data_format == tango._tango.AttrDataFormat.SCALAR:
-            self.logger.info("Integral of non SCALAR attribute %s" % self.channel.name)
+            self.logger.info("History of non SCALAR attribute %s" % self.channel.name)
             return
         period = self.device.get_attribute_poll_period(self.channel.name)
         if period <= 0:
@@ -42,8 +38,7 @@ class TangoAttributeHistory(TangoAttribute):
             else:
                 y[i] = h.value
                 x[i] = h.time.totime()
-        index = (y != numpy.nan)
-        index = numpy.logical_and(index, x > (time.time() - self.delta_t))
+        index = numpy.logical_and(y != numpy.nan, x > (time.time() - self.delta_t))
         if len(y[index]) <= 0:
             self.logger.info("%s No values for %f seconds in history", self.channel.name, self.delta_t)
             return
