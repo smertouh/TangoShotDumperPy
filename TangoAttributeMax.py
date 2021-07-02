@@ -12,3 +12,4 @@ class TangoAttributeMax(TangoAttributeHistory):
         self.channel.properties['max'] = ['True']
         if self.channel.y is not None:
             self.channel.y = numpy.max(self.channel.y)
+            self.channel.x = None

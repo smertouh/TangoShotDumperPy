@@ -30,7 +30,7 @@ class TangoAttribute(DumperItem):
             if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.SCALAR:
                 # self.logger.debug("SCALAR attribute %s" % self.attribute_name)
                 if properties.get("history", [False])[0] != 'True':
-                    addition = {'mark': self.channel.y_attr.value}
+                    addition = {'mark': self.channel.y}
             self.channel.save_log(log_file, addition)
         if sdf:
             self.channel.save_data(zip_file, folder)

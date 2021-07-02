@@ -12,3 +12,4 @@ class TangoAttributeMin(TangoAttributeHistory):
         self.channel.properties['min'] =['True']
         if self.channel.y is not None:
             self.channel.y = numpy.min(self.channel.y)
+            self.channel.x = None

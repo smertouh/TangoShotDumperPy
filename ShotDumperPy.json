@@ -19,9 +19,21 @@
             "eval": "TangoAttributeHistory('sys/tg_test/1', 'double_scalar', 'history')"
         },
         {
+            "exec": "from TangoAttributeMax import TangoAttributeMax",
+            "eval": "TangoAttributeMax('sys/tg_test/1', 'double_scalar', 'history')"
+        },
+        {
+            "exec": "from TangoAttributeMin import TangoAttributeMin",
+            "eval": "TangoAttributeMin('sys/tg_test/1', 'double_scalar', 'history')"
+        },
+        {
+            "exec": "from TangoAttributeP2P import TangoAttributeP2P",
+            "eval": "TangoAttributeP2P('sys/tg_test/1', 'double_scalar', 'history')"
+        },
+        {
             "eval": "TangoAttribute('sys/tg_test/1', 'double_image_ro', 'tangotest')"
         }
     ],
-    "shot": 7501,
-    "shot_time": "2021-07-02 17:49:55"
+    "shot": 7510,
+    "shot_time": "2021-07-02 18:03:59"
 }

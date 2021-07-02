@@ -9,5 +9,7 @@ class TangoAttributeIntegral(TangoAttributeHistory):
         super().read_attribute()
         self.channel.file_name = self.channel.name + '_integral'
         self.channel.properties['history'] =['False']
+        self.channel.properties['integral'] =['True']
         if self.channel.y is not None:
             self.channel.y = numpy.trapz(self.channel.y, self.channel.x)
+            self.channel.x = None

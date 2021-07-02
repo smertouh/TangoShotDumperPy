@@ -12,3 +12,4 @@ class TangoAttributeP2P(TangoAttributeHistory):
         self.channel.properties['p2p'] =['True']
         if self.channel.y is not None:
             self.channel.y = numpy.max(self.channel.y) - numpy.min(self.channel.y)
+            self.channel.x = None
