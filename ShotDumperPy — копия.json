@@ -1,0 +1,238 @@
+{
+    "sleep": 1.0,
+    "Loglevel": 40,
+    "outDir": "D:\\data\\",
+    "devices": [
+        {
+            "eval": "AdlinkADC(dev='binp/nbi/adc0', avg=100, folder='ADC_0')"
+        },
+        {
+            "eval": "AdlinkADC(dev='binp/nbi/fakeADC', avg=100, folder='ADC_0')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/lauda', '1012', folder='example')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/magnet1','current', folder='TDK')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/magnet2','current', folder='TDK')"
+        },
+        {
+            "eval": "TangoAttribute('bias','programmed_current', folder='TDK')"
+        },
+        {
+            "eval": "TangoAttribute('bias','programmed_voltage', folder='TDK')"
+        },
+        {
+            "exec": "from maxhistory import TangoAttributemax",
+            "eval": "TangoAttributemax('et7000_server/test/pet7_7026','ai05', folder='Calorimeter')"
+        },
+        {
+            "exec": "from TangoAttributeIntegral import TangoAttributeIntegral",
+            "eval": "TangoAttributeIntegral('et7000_server/test/pet17_7018','ai00', folder='CalorimeterWater')"
+        },
+        {
+            "eval": "TangoAttributeIntegral('et7000_server/test/pet17_7018','ai01', folder='CalorimeterWater')"
+        },
+        {
+            "eval": "TangoAttributeIntegral('et7000_server/test/pet17_7018','ai02', folder='CalorimeterWater')"
+        },
+        {
+            "eval": "TangoAttributeIntegral('et7000_server/test/pet17_7018','ai03', folder='CalorimeterWater')"
+        },
+        {
+            "exec": "from minhistory import TangoAttributemin",
+            "eval": "TangoAttributemin('et7000_server/test/pet9_7026','ai00', folder='Ustmin')"
+        },
+        {
+            "eval": "TangoAttribute('et7000_server/test/pet2_7015','ai02', folder='Calorimeter')"
+        },
+        {
+            "eval": "TangoAttribute('et7000_server/test/pet2_7015','ai06', folder='Cs')"
+        },
+        {
+            "eval": "TangoAttribute('et7000_server/test/pet2_7015','ai05', folder='Cs')"
+        },
+        {
+            "eval": "TangoAttribute('et7000_server/test/pet2_7015','ai00', folder='Cs2')"
+        },
+        {
+            "eval": "TangoAttribute('et7000_server/test/pet2_7015','ai01', folder='Cs2')"
+        },
+        {
+            "eval": "TangoAttribute('test/nbi/vasya','lastshottime', folder='TIME')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/adam6','ai00', folder='Cs')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/adam6','ai01', folder='Cs')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/adam6','ai02', folder='Cs')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/adam6','ai03', folder='Cs')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/adam6','ai04', folder='Cs')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/adam6','ai05', folder='Cs')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/adam8','ai00', folder='Cs1')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/adam8','ai01', folder='Cs1')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/timing','pulse_start3', folder='Time')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/timing','pulse_start4', folder='Time')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/timing','pulse_start10', folder='Time')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/timing','pulse_stop3', folder='Time')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/timing','pulse_stop4', folder='Time')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/timing','pulse_stop10', folder='Time')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/timing','channel_enable3', folder='Time')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/timing','channel_enable4', folder='Time')"
+        },
+        {
+            "eval": "TangoAttribute('binp/nbi/timing','channel_enable10', folder='Time')"
+        },
+		{
+            "eval": "TangoAttribute('auto/manual_write/scalar_atr','PH2Pa', folder='Scalaratr')"
+        },
+		{
+            "eval": "TangoAttribute('auto/manual_write/scalar_atr','PH2', folder='Scalaratr')"
+        },
+		{
+            "eval": "TangoAttribute('auto/manual_write/scalar_atr','FCa', folder='Scalaratr')"
+        },
+		{
+            "eval": "TangoAttribute('auto/manual_write/scalar_atr','FCb', folder='Scalaratr')"
+        },
+		{
+            "eval": "TangoAttribute('auto/manual_write/scalar_atr','FCl', folder='Scalaratr')"
+        },
+		{
+            "eval": "TangoAttribute('auto/manual_write/scalar_atr','QMAG1', folder='Scalaratr')"
+        },
+		{
+            "eval": "TangoAttribute('auto/manual_write/scalar_atr','QMAG2', folder='Scalaratr')"
+        },
+        {
+            "exec": "from peak2peak import TangoAttributepeak2peak",
+            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai00', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai01', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai02', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai03', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai04', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai05', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai06', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/1','ai07', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai00', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai01', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai02', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai03', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai04', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai05', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai06', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet3_7018','ai07', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet12_7018','ai00', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet12_7018','ai01', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet12_7018','ai02', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet12_7018','ai03', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributemax('et7000_server/test/1','ai09', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet7_7026','ai00', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet7_7026','ai01', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet7_7026','ai02', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet7_7026','ai03', folder='BCandBPM')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet15_7018','ai00', folder='tube')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet15_7018','ai01', folder='tube')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet15_7018','ai02', folder='tube')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet15_7018','ai03', folder='tube')"
+        },
+        {
+            "eval": "TangoAttributepeak2peak('et7000_server/test/pet16_7018','ai00', folder='HV')"
+        },
+        {
+            "eval": "TangoAttribute('binp/CS/bot','UOvenr', folder='Csbot')"
+        },
+        {
+            "eval": "TangoAttribute('binp/CS/bot','IOvenr', folder='Csbot')"
+        }
+    ],
+    "shot": 14688,
+    "shot_time": "2021-06-22 16:49:26"
+}

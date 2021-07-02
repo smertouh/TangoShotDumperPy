@@ -2,18 +2,18 @@ from DumperItem import *
 
 
 class TangoAttribute(DumperItem):
-    def __init__(self, device_name, attribute_name, zip_folder=None, force=True):
+    def __init__(self, device_name, attribute_name, folder=None, force=True):
         super().__init__(device_name)
         self.attribute_name = attribute_name
-        self.folder = zip_folder
+        self.folder = folder
         self.force = force
         # self.retry_count = 3
         self.channel = DumperItem.Channel(self.device, attribute_name)
         self.channel.logger = self.logger
 
-    def save(self, log_file, zip_file, zip_folder=None):
-        if zip_folder is None:
-            zip_folder = self.folder
+    def save(self, log_file, zip_file, folder=None):
+        if folder is None:
+            folder = self.folder
         # save_data and save_log flags
         properties = self.channel.properties()
         sdf = properties.get("save_data", [False])[0]
@@ -23,13 +23,8 @@ class TangoAttribute(DumperItem):
             sdf = True
             slf = True
         if sdf or slf:
-            self.channel.save_properties(zip_file, zip_folder)
-            self.channel.read_y()
-            self.channel.read_x()
-            if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.IMAGE:
-                # self.logger.debug("IMAGE attribute %s" % self.attribute_name)
-                self.channel.x = self.channel.y_attr.value[1,:]
-                self.channel.y = self.channel.y_attr.value[0, :]
+            self.channel.save_properties(zip_file, folder)
+            self.read_attribute()
         if slf:
             addition = {}
             if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.SCALAR:
@@ -37,4 +32,14 @@ class TangoAttribute(DumperItem):
                 addition = {'mark': self.channel.y_attr.value}
             self.channel.save_log(log_file, addition)
         if sdf:
-            self.channel.save_data(zip_file, zip_folder)
+            self.channel.save_data(zip_file, folder)
+
+    def read_attribute(self):
+        self.channel.read_y()
+        if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.IMAGE:
+            # self.logger.debug("IMAGE attribute %s" % self.attribute_name)
+            self.channel.x = self.channel.y_attr.value[1, :]
+            self.channel.y = self.channel.y_attr.value[0, :]
+        elif self.channel.y_attr.data_format != tango._tango.AttrDataFormat.SCALAR:
+            self.channel.read_x()
+

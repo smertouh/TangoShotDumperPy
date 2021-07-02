@@ -33,7 +33,7 @@ class DumperTestDevice(DumperItem):
             return True
         return False
 
-    def save(self, log_file, zip_file, zip_folder='test_device'):
+    def save(self, log_file, zip_file, folder=None):
         log_file.write('; %s=%f' % (self.name, self.time))
         print('          %s = %f' % (self.name, self.time))
         if self.points > 0:
@@ -44,7 +44,7 @@ class DumperTestDevice(DumperItem):
                 buf += s.replace(",", ".")
                 if k < self.points - 1:
                     buf += '\r\n'
-            entry = zip_folder + "/channel_%d.txt" % self.n
+            entry = folder + "/channel_%d.txt" % self.n
             zip_file.writestr(entry, buf)
-            entry = zip_folder + "/paramchannel_%d.txt" % self.n
+            entry = folder + "/paramchannel_%d.txt" % self.n
             zip_file.writestr(entry, "name=test_device_%d\r\nxlabel=Point number\r\nunit=a.u." % self.n)

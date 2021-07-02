@@ -228,11 +228,11 @@ class TangoShotDumperServer(Device):
         try:
             if not os.path.exists(of):
                 os.makedirs(of)
-                self.logger.debug("Output zip_folder %s has been created", of)
+                self.logger.debug("Output folder %s has been created", of)
             self.out_dir = of
             return True
         except:
-            self.logger.debug("Can not create output zip_folder %s", of)
+            self.logger.debug("Can not create output folder %s", of)
             self.out_dir = None
             return False
 

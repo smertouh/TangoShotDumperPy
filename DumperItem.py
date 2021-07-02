@@ -147,10 +147,10 @@ class DumperItem:
             if np == 0:
                 print('          ', label, '---- no marks')
 
-        def save_properties(self, zip_file: zipfile.ZipFile, zip_folder: str = ''):
-            if not zip_folder.endswith('/'):
-                zip_folder += '/'
-            zip_entry = zip_folder + "param" + self.name + ".txt"
+        def save_properties(self, zip_file: zipfile.ZipFile, folder: str = ''):
+            if not folder.endswith('/'):
+                folder += '/'
+            zip_entry = folder + "param" + self.name + ".txt"
             buf = "Signal_Name=%s/%s\r\n" % (self.device.name(), self.name)
             properties = self.properties()
             for prop in properties:
@@ -158,10 +158,10 @@ class DumperItem:
             zip_file.writestr(zip_entry, buf)
             self.logger.debug('%s Properties saved to %s', self.name, zip_entry)
 
-        def save_data(self, zip_file: zipfile.ZipFile, zip_folder: str = ''):
-            if not zip_folder.endswith('/'):
-                zip_folder += '/'
-            zip_entry = zip_folder + self.name + ".txt"
+        def save_data(self, zip_file: zipfile.ZipFile, folder: str = ''):
+            if not folder.endswith('/'):
+                folder += '/'
+            zip_entry = folder + self.name + ".txt"
             avg = int(self.properties().get("save_avg", ['1'])[0])
             outbuf = ''
             if self.x is None:
@@ -235,7 +235,7 @@ class DumperItem:
                 self.logger.debug('', exc_info=True)
         return self.active
 
-    def save(self, log_file: IO, zip_file: zipfile.ZipFile, zip_folder: str = None):
+    def save(self, log_file: IO, zip_file: zipfile.ZipFile, folder: str = None):
         raise NotImplemented()
         # if not self.active:
         #     self.logger.debug('Reading inactive device')

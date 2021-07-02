@@ -2,11 +2,11 @@ from DumperItem import *
 
 
 class PicoLog1000(DumperItem):
-    def __init__(self, tango_device_name: str, zip_folder='PicoLog'):
+    def __init__(self, tango_device_name: str, folder='PicoLog'):
         super().__init__(tango_device_name)
-        self.folder = zip_folder
+        self.folder = folder
 
-    def save(self, log_file, zip_file, zip_folder=''):
+    def save(self, log_file, zip_file, folder=None):
         # read data ready
         data_ready = self.device.read_attribute('data_ready').value
         if not data_ready:
