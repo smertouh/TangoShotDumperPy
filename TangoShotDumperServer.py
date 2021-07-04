@@ -141,8 +141,8 @@ class TangoShotDumperServer(Device):
             self.logger.setLevel(self.config.get('log_level', logging.DEBUG))
             self.logger.log(logging.DEBUG, "Log level set to %d" % self.logger.level)
             self.config["sleep"] = float(self.config.get("sleep", 1.0))
-            self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
-            self.shot = self.config.get('shot', 0)
+            self.out_root_dir = str(self.config.get("out_root_dir", '.\\data\\'))
+            self.shot = int(self.config.get('shot', 0))
             # Restore devices
             items = self.config.get("devices", [])
             self.device_list = []
@@ -156,7 +156,7 @@ class TangoShotDumperServer(Device):
                     if 'eval' in unit:
                         item = eval(unit["eval"])
                         self.device_list.append(item)
-                        self.logger.info("%s has been added" % unit["eval"])
+                        self.logger.info("%s has been added" % item)
                     else:
                         self.logger.info("No 'eval' option for %s" % unit)
                 except:
@@ -190,7 +190,7 @@ class TangoShotDumperServer(Device):
                 # self.server_device_list.remove(item)
                 self.logger.error("%s activation error", item)
                 self.logger.debug('', exc_info=True)
-            return n
+        return n
 
     def check_new_shot(self):
         for item in self.device_list:
@@ -322,6 +322,7 @@ class TangoShotDumperServer(Device):
 
 
 def looping():
+    t0 = time.time()
     for dev in TangoShotDumperServer.server_device_list:
         time.sleep(dev.config['sleep'])
         try:

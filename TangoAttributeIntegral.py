@@ -12,4 +12,5 @@ class TangoAttributeIntegral(TangoAttributeHistory):
         self.channel.properties['integral'] =['True']
         if self.channel.y is not None:
             self.channel.y = numpy.trapz(self.channel.y, self.channel.x)
+            self.channel.properties['delta_t'] =[str(numpy.ptp(self.channel.x))]
             self.channel.x = None
