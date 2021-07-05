@@ -378,7 +378,7 @@ class TangoAttributeHistoryServer(Device):
 
 def looping():
     t0 = time.time()
-    for dev in TangoShotDumperServer.server_device_list:
+    for dev in TangoAttributeHistoryServer.server_device_list:
         time.sleep(dev.config['sleep'])
         try:
             dev.process()
@@ -393,7 +393,7 @@ def looping():
 
 
 def post_init_callback():
-    for dev in TangoAttributeHistoryServer.devices:
+    for dev in TangoAttributeHistoryServer.server_device_list:
         for attr_n in dev.attributes:
             try:
                 conf = dev.attributes[attr_n]
