@@ -10,7 +10,7 @@ import tango
 class DumperItem:
     class Channel:
         def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
-            self.logger = DumperItem.config_logger(name=__name__, level=logging.DEBUG)
+            self.logger = logging.getLogger(__name__)
             self.device = device
             if type(channel) is int:
                 self.name = prefix + (format % channel)
@@ -85,7 +85,10 @@ class DumperItem:
                 try:
                     range = mrk[key]
                     index = numpy.logical_and(self.x >= range[0], self.x <= range[1])
-                    result[key] = self.y[index].mean()
+                    if numpy.any(index):
+                        result[key] = self.y[index].mean()
+                    else:
+                        result[key] = float('nan')
                 except:
                     pass
             return result
@@ -151,7 +154,7 @@ class DumperItem:
                 np += 1
             if np == 0:
                 print('    ', label, '---- no marks')
-            self.logger.debug('%s Log Saved', self.name)
+            self.logger.debug('%s Log Saved', self.file_name)
 
         def save_properties(self, zip_file: zipfile.ZipFile, folder: str = ''):
             if not folder.endswith('/'):
@@ -162,9 +165,12 @@ class DumperItem:
             for prop in properties:
                 buf += '%s=%s\r\n' % (prop, properties[prop][0])
             zip_file.writestr(zip_entry, buf)
-            self.logger.debug('%s Properties saved to %s', self.name, zip_entry)
+            self.logger.debug('%s Properties saved to %s', self.file_name, zip_entry)
 
         def save_data(self, zip_file: zipfile.ZipFile, folder: str = ''):
+            if self.y is None:
+                self.logger.debug('%s No data to save', self.file_name)
+                return
             if not folder.endswith('/'):
                 folder += '/'
             zip_entry = folder + self.file_name + ".txt"
@@ -178,7 +184,7 @@ class DumperItem:
                     n = len(self.y)
                     ys = 0.0
                     ns = 0.0
-                    for k in range(n):
+                    for k in range(n-1):
                         ys += self.y[k]
                         ns += 1.0
                         if ns >= avg:
@@ -186,9 +192,10 @@ class DumperItem:
                             outbuf += s.replace(",", ".")
                             ys = 0.0
                             ns = 0.0
-                    if ns > 0:
-                        s = fmt % (ys / ns)
-                        outbuf += s.replace(",", ".")
+                    ys += self.y[n-1]
+                    ns += 1.0
+                    s = fmt % (ys / ns)
+                    outbuf += s.replace(",", ".")
                 except:
                     s = fmt % self.y
                     outbuf += s.replace(",", ".")
@@ -200,7 +207,7 @@ class DumperItem:
                 xs = 0.0
                 ys = 0.0
                 ns = 0.0
-                for k in range(n):
+                for k in range(n-1):
                     xs += self.x[k]
                     ys += self.y[k]
                     ns += 1.0
@@ -210,14 +217,16 @@ class DumperItem:
                         xs = 0.0
                         ys = 0.0
                         ns = 0.0
-                if ns > 0:
-                    s = fmt % (xs / ns, ys / ns)
-                    outbuf += s.replace(",", ".")
+                xs += self.x[n-1]
+                ys += self.y[n-1]
+                ns += 1.0
+                s = fmt % (xs / ns, ys / ns)
+                outbuf += s.replace(",", ".")
             zip_file.writestr(zip_entry, outbuf)
-            self.logger.debug('%s Data saved to %s', self.name, zip_entry)
+            self.logger.debug('%s Data saved to %s', self.file_name, zip_entry)
 
     def __init__(self, device_name: str):
-        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
+        self.logger = logging.getLogger(__name__)
         self.name = device_name
         self.active = False
         self.device = None
@@ -282,7 +291,8 @@ class DumperItem:
     FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
 
     @staticmethod
-    def as_boolean(value: str):
+    def as_boolean(value):
+        value = str(value)
         if value.lower() in DumperItem.TRUE_VALUES:
             return True
         if value.lower() in DumperItem.FALSE_VALUES:
@@ -290,7 +300,10 @@ class DumperItem:
         return None
 
     @staticmethod
-    def as_int(value: str):
+    def as_int(value):
+        if isinstance(int, value):
+            return value
+        value = str(value)
         try:
             return int(value)
         except:

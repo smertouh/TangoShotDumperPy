@@ -1,39 +1,17 @@
 {
     "sleep": 1.0,
-    "log_level": 10,
+    "log_level": 20,
     "out_root_dir": "D:\\data\\",
     "devices": [
-        {
-            "exec": "from DumperTestDevice import DumperTestDevice",
-            "eval": "DumperTestDevice(5.0, 100)"
-        },
         {
             "exec": "from TangoAttribute import TangoAttribute",
             "eval": "TangoAttribute('sys/tg_test/1', 'double_spectrum_ro', 'tangotest')"
         },
         {
-            "eval": "TangoAttribute('sys/tg_test/1', 'double_scalar', 'tangotest')"
-        },
-        {
-            "exec": "from TangoAttributeHistory import TangoAttributeHistory",
-            "eval": "TangoAttributeHistory('sys/tg_test/1', 'double_scalar', 'history')"
-        },
-        {
-            "exec": "from TangoAttributeMax import TangoAttributeMax",
-            "eval": "TangoAttributeMax('sys/tg_test/1', 'double_scalar', 'history')"
-        },
-        {
-            "exec": "from TangoAttributeMin import TangoAttributeMin",
-            "eval": "TangoAttributeMin('sys/tg_test/1', 'double_scalar', 'history')"
-        },
-        {
-            "exec": "from TangoAttributeP2P import TangoAttributeP2P",
-            "eval": "TangoAttributeP2P('sys/tg_test/1', 'double_scalar', 'history')"
-        },
-        {
-            "eval": "TangoAttribute('sys/tg_test/1', 'double_image_ro', 'tangotest')"
+            "exec": "from AdlinkADC import AdlinkADC",
+            "eval": "AdlinkADC('binp/nbi/adc0', 'adc0')"
         }
     ],
-    "shot": 7510,
-    "shot_time": "2021-07-02 18:03:59"
+    "shot": 7558,
+    "shot_time": "2021-07-05 16:53:46"
 }

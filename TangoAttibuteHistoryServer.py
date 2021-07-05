@@ -3,7 +3,7 @@
 
 """
 Shot dumper tango device server
-A. L. Sanin, started 25.06.2021
+A. L. Sanin, started 05.07.2021
 """
 import datetime
 import logging
@@ -20,7 +20,7 @@ from tango.server import Device, attribute, command, pipe, device_property
 NaN = float('nan')
 
 
-class TangoShotDumperServer(Device):
+class TangoAttributeHistoryServer(Device):
     version = '1.0'
     server_device_list = []
 
@@ -47,30 +47,47 @@ class TangoShotDumperServer(Device):
         self.locked = False
         self.shot_number_value = 0
         self.shot_time_value = 0.0
-        # read config
+        # config
         try:
             self.set_state(DevState.INIT)
             # read config from device properties
             level = self.get_device_property('log_level', logging.DEBUG)
             self.logger.setLevel(level)
             # read config from file
-            self.config_file = self.get_device_property('config_file', 'ShotDumperPy.json')
+            self.config_file = self.get_device_property('config_file', 'TangoAttributeHistoryServer.json')
             self.read_config(self.config_file)
             # read shot number
-            n = int(self.get_device_property('shot_number', 0))
+            n = self.get_device_property('shot_number', 0)
             self.write_shot_number(n)
             # read shot time
-            t = float(self.get_device_property('shot_time', 0.0))
+            t = self.get_device_property('shot_time', 0.0)
             self.write_shot_time(t)
-            if self not in TangoShotDumperServer.server_device_list:
-                TangoShotDumperServer.server_device_list.append(self)
-            print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
+            properties = self.properties()
+            self.attributes = {}
+            for prop in properties:
+                try:
+                    self.attributes[prop] = eval(properties[prop])
+                except:
+                    pass
+            if self not in TangoAttributeHistoryServer.server_device_list:
+                TangoAttributeHistoryServer.server_device_list.append(self)
+            self.logger.info('Device %s added with %s attributes', self.get_name(), len(self.attributes))
         except:
-            msg = 'Exception in TangoShotDumperServer'
+            msg = 'Exception in TangoAttributeHistoryServer'
             self.logger.error(msg)
             self.error_stream(msg)
             self.logger.debug('', exc_info=True)
             self.set_state(DevState.FAULT)
+
+    def log_exception(self, message=None, *args, level=logging.ERROR):
+        if message is None:
+            ex_type, ex_value, traceback = sys.exc_info()
+            message = 'Exception %s %s'
+            args = (ex_type, ex_value)
+        msg = message % args
+        self.logger.log(level, msg)
+        self.error_stream(msg)
+        self.logger.debug('', exc_info=True)
 
     def read_shot_number(self):
         return self.shot_number_value
@@ -112,6 +129,14 @@ class TangoShotDumperServer(Device):
             self.logger.info('Error writing property %s for %s', prop, self.device_name)
             self.logger.debug('', exc_info=True)
 
+    def property_list(self, filter: str = '*'):
+        return self.device_proxy.get_property_list(filter)
+
+    def properties(self, filter: str = '*'):
+        # returns dictionary with device properties
+        names = self.device_proxy.get_property_list(filter)
+        return self.device_proxy.get_property(names)
+
     @staticmethod
     def config_logger(name: str = __name__, level: int = logging.DEBUG):
         logger = logging.getLogger(name)
@@ -143,7 +168,8 @@ class TangoShotDumperServer(Device):
             # Restore log level
             self.logger.setLevel(self.config_get('log_level', logging.DEBUG))
             self.logger.debug("Log level set to %s" % self.logger.level)
-            self.config["sleep"] = self.config_get("sleep", 1.0)
+            # Restore server parameters
+            self.sleep = self.config_get("sleep", 1.0)
             self.out_root_dir = self.config_get("out_root_dir", '.\\data\\')
             self.shot = self.config_get('shot', 0)
             # Restore devices
@@ -158,7 +184,6 @@ class TangoShotDumperServer(Device):
                         exec(unit["exec"])
                     if 'eval' in unit:
                         item = eval(unit["eval"])
-                        item.logger = self.logger
                         self.device_list.append(item)
                         self.logger.info("%s has been added" % item)
                     else:
@@ -183,6 +208,22 @@ class TangoShotDumperServer(Device):
             self.logger.info('Configuration save error to %s' % file_name)
             self.logger.debug('', exc_info=True)
             return False
+
+    def read_history(self, attr: tango.Attribute):
+        attr_name = attr.get_name()
+        #self.logger.debug('read_general entry %s %s', self.device_name, attr_name)
+        if not self.is_connected():
+            self.set_error_attribute_value(attr)
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            msg = '%s %s Waiting for reconnect' % (self.device_name, attr_name)
+            self.logger.debug(msg)
+            self.debug_stream(msg)
+            return []
+
+
+
+
+
 
     def activate(self):
         n = 0
@@ -324,6 +365,16 @@ class TangoShotDumperServer(Device):
         print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
         return
 
+    # def restore_polling(self, attr_name: str):
+    #     try:
+    #         p = self.get_attribute_property(attr_name, 'polling')
+    #         pn = int(p)
+    #         self.dp.poll_attribute(attr_name, pn)
+    #     except:
+    #         #self.logger.warning('', exc_info=True)
+    #         pass
+
+
 
 def looping():
     t0 = time.time()
@@ -341,5 +392,78 @@ def looping():
             dev.logger.debug('', exc_info=True)
 
 
+def post_init_callback():
+    for dev in TangoAttributeHistoryServer.devices:
+        for attr_n in dev.attributes:
+            try:
+                conf = dev.attributes[attr_n]
+                split = attr_n.split('/')
+                a_n = split[-1]
+                d_n = attr_n.replace('/' + a_n, '')
+                conf['device_name'] = d_n
+                conf['attr_name'] = a_n
+                d_p = tango.DeviceProxy(d_n)
+                conf['device'] = d_p
+                try:
+                    d_p.ping(a_n)
+                    conf['alive'] = True
+                except:
+                    conf['alive'] = False
+                a_c = d_p.get_attribute_config_ex(a_n)
+                attr = tango.Attr(attr_n, tango.DevDouble, tango.AttrWriteType.READ)
+                dev.add_attribute(attr, dev.read_general)
+
+                attribute_history(self, attr_name, depth,
+                                  extract_as=ExtractAs.Numpy)→sequence < DeviceAttributeHistory >
+
+                get_attribute_config_ex(self, name)→AttributeInfoListEx:
+
+                is_attribute_polled(self, attr_name)→bool
+
+                is_locked(self)→bool
+
+                ping(self)→int
+                time                 elapsed in microseconds
+                Throwsexception if                 device is not alive
+
+                poll_attribute(self, attr_name, period)→None
+                Add
+                an
+                attribute
+                to
+                the
+                list
+                of
+                polled
+                attributes.Parametersattr_name(str)
+                attribute
+                nameperiod(int)
+                polling
+                period in milliseconds
+
+                polling_status(self)→sequence < str >
+                Return(sequence < str >)
+                One
+                string
+                for each polled command / attribute.Eachstring is multi-line string with:•
+                attribute / command
+                name•  attribute / command
+                polling
+                period in milliseconds•  attribute / command
+                polling
+                ring
+                buffer•  time
+                needed
+                for last attribute / command execution in milliseconds•  time since data in the ring buffer has not been updated•  delta time between the last records in the ring buffer•  exception parameters in case of the last execution failed
+
+                set_attribute_config(self, attr_info_ex) -> None
+                Change the extended attribute configuration
+                for the specified attributeParametersattr_info_ex(AttributeInfoEx) extended attribute informa-tion
+
+
+            except:
+                pass
+
+
 if __name__ == "__main__":
-    TangoShotDumperServer.run_server(event_loop=looping)
+    TangoShotDumperServer.run_server(post_init_callback=post_init_callback, event_loop=looping)

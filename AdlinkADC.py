@@ -45,8 +45,8 @@ class AdlinkADC(DumperItem):
                         channel.logger = self.logger
                         # Read save_data and save_log flags
                         properties = channel.read_properties()
-                        sdf = properties.get("save_data", [False])[0]
-                        slf = properties.get("save_log", [False])[0]
+                        sdf = self.as_boolean(properties.get("save_data", [False])[0])
+                        slf = self.as_boolean(properties.get("save_log", [False])[0])
                         # Save signal properties
                         if sdf or slf:
                             channel.save_properties(zip_file, folder)

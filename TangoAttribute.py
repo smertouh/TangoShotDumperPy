@@ -16,8 +16,8 @@ class TangoAttribute(DumperItem):
             folder = self.folder
         # save_data and save_log flags
         properties = self.channel.read_properties(True)
-        sdf = properties.get("save_data", [False])[0]
-        slf = properties.get("save_log", [False])[0]
+        sdf = self.as_boolean(properties.get("save_data", [False])[0])
+        slf = self.as_boolean(properties.get("save_log", [False])[0])
         # force save if requested during attribute creation
         if self.force:
             sdf = True
@@ -25,6 +25,9 @@ class TangoAttribute(DumperItem):
         if sdf or slf:
             self.read_attribute()
             self.channel.save_properties(zip_file, folder)
+            if self.channel.y is None:
+                print('    ', self.channel.file_name, '---- No data')
+                return
         if slf:
             addition = {}
             if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.SCALAR:
