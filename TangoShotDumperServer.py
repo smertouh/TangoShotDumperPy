@@ -36,6 +36,13 @@ class TangoShotDumperServer(Device):
                           unit="s", format="%d",
                           doc="Shot time")
 
+    @command(dtype_in=int)
+    def set_log_level(self, level):
+        self.logger.setLevel(level)
+        msg = '%s Log level set to %d' % (self.get_name(), level)
+        self.logger.info(msg)
+        self.info_stream(msg)
+
     def init_device(self):
         # set default properties
         self.logger = self.config_logger(name=__name__, level=logging.DEBUG)

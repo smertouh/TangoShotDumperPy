@@ -13,6 +13,7 @@ import time
 import json
 import zipfile
 
+import numpy
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import Device, attribute, command, pipe, device_property
@@ -36,6 +37,17 @@ class TangoAttributeHistoryServer(Device):
                           unit="s", format="%d",
                           doc="Shot time")
 
+    @command(dtype_in=int)
+    def set_log_level(self, level):
+        self.logger.setLevel(level)
+        msg = '%s Log level set to %d' % (self.get_name(), level)
+        self.logger.info(msg)
+        self.info_stream(msg)
+
+    @command(dtype_in=str, dtype_out=str)
+    def read_history(self, name):
+        return str(read_attribute_history(name))
+
     def init_device(self):
         # set default properties
         self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
@@ -47,6 +59,7 @@ class TangoAttributeHistoryServer(Device):
         self.locked = False
         self.shot_number_value = 0
         self.shot_time_value = 0.0
+        self.config = {}
         # config
         try:
             self.set_state(DevState.INIT)
@@ -209,161 +222,6 @@ class TangoAttributeHistoryServer(Device):
             self.logger.debug('', exc_info=True)
             return False
 
-    def read_history(self, attr: tango.Attribute):
-        attr_name = attr.get_name()
-        #self.logger.debug('read_general entry %s %s', self.device_name, attr_name)
-        if not self.is_connected():
-            self.set_error_attribute_value(attr)
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            msg = '%s %s Waiting for reconnect' % (self.device_name, attr_name)
-            self.logger.debug(msg)
-            self.debug_stream(msg)
-            return []
-
-
-
-
-
-
-    def activate(self):
-        n = 0
-        for item in self.device_list:
-            try:
-                if item.activate():
-                    n += 1
-            except:
-                # self.server_device_list.remove(item)
-                self.logger.error("%s activation error", item)
-                self.logger.debug('', exc_info=True)
-        return n
-
-    def check_new_shot(self):
-        for item in self.device_list:
-            try:
-                if item.new_shot():
-                    self.shot_number_value += 1
-                    self.write_shot_number(self.shot_number_value)
-                    self.shot_time_value = time.time()
-                    self.write_shot_time(self.shot_time_value)
-                    return True
-            except:
-                # self.device_list.remove(item)
-                self.logger.error("%s check for new shot", item)
-                self.logger.debug('', exc_info=True)
-        return False
-
-    @staticmethod
-    def date_time_stamp():
-        return datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-
-    @staticmethod
-    def time_stamp():
-        return datetime.datetime.today().strftime('%H:%M:%S')
-
-    @staticmethod
-    def get_log_folder():
-        ydf = datetime.datetime.today().strftime('%Y')
-        mdf = datetime.datetime.today().strftime('%Y-%m')
-        ddf = datetime.datetime.today().strftime('%Y-%m-%d')
-        folder = os.path.join(ydf, mdf, ddf)
-        return folder
-
-    def make_log_folder(self):
-        of = os.path.join(self.out_root_dir, self.get_log_folder())
-        try:
-            if not os.path.exists(of):
-                os.makedirs(of)
-                self.logger.debug("Output folder %s has been created", of)
-            self.out_dir = of
-            return True
-        except:
-            self.logger.debug("Can not create output folder %s", of)
-            self.out_dir = None
-            return False
-
-    def lock_output_dir(self, folder=None):
-        if folder is None:
-            folder = self.out_dir
-        if self.locked:
-            self.logger.warning("Unexpected lock")
-            self.zip_file.close()
-            self.log_file.close()
-            self.unlock_output_dir()
-        self.lock_file = open(os.path.join(folder, "lock.lock"), 'w+')
-        self.locked = True
-        self.logger.debug("Directory %s locked", folder)
-
-    def unlock_output_dir(self):
-        if self.lock_file is not None:
-            self.lock_file.close()
-            os.remove(self.lock_file.name)
-        self.locked = False
-        self.lock_file = None
-        self.logger.debug("Directory unlocked")
-
-    def open_log_file(self, folder: str = ''):
-        logf = open(os.path.join(folder, self.get_log_file_name()), 'a')
-        return logf
-
-    @staticmethod
-    def get_log_file_name():
-        logfn = datetime.datetime.today().strftime('%Y-%m-%d.log')
-        return logfn
-
-    @staticmethod
-    def open_zip_file(folder):
-        fn = datetime.datetime.today().strftime('%Y-%m-%d_%H%M%S.zip')
-        zip_file_name = os.path.join(folder, fn)
-        zip_file = zipfile.ZipFile(zip_file_name, 'a', compression=zipfile.ZIP_DEFLATED)
-        return zip_file
-
-    def process(self):
-        try:
-            # activate items in devices_list
-            if self.activate() <= 0:
-                self.logger.info("No active devices")
-                return
-            # check for new shot
-            if not self.check_new_shot():
-                return
-            # new shot - save signals
-            dts = self.date_time_stamp()
-            self.shot += 1
-            self.config['shot'] = self.shot
-            self.config['shot_time'] = dts
-            print("\r\n%s New Shot %d" % (dts, self.shot))
-            self.make_log_folder()
-            self.lock_output_dir()
-            self.log_file = self.open_log_file(self.out_dir)
-            # Write date and time
-            self.log_file.write(dts)
-            # Write shot number
-            self.log_file.write('; Shot=%d' % self.shot)
-            # Open zip file
-            self.zip_file = self.open_zip_file(self.out_dir)
-            for item in self.device_list:
-                print("Saving from %s" % item.name)
-                try:
-                    item.logger = self.logger
-                except:
-                    pass
-                try:
-                    item.save(self.log_file, self.zip_file)
-                except:
-                    self.logger.error("Exception saving %s" % str(item))
-                    self.logger.debug('', exc_info=True)
-            zfn = os.path.basename(self.zip_file.filename)
-            self.zip_file.close()
-            self.log_file.write('; File=%s' % zfn)
-            self.log_file.write('\n')
-            self.log_file.close()
-            self.unlock_output_dir()
-            self.write_config(self.config_file)
-        except:
-            self.logger.error("Unexpected exception")
-            self.logger.debug('', exc_info=True)
-        print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
-        return
 
     # def restore_polling(self, attr_name: str):
     #     try:
@@ -373,7 +231,6 @@ class TangoAttributeHistoryServer(Device):
     #     except:
     #         #self.logger.warning('', exc_info=True)
     #         pass
-
 
 
 def looping():
@@ -397,73 +254,136 @@ def post_init_callback():
         for attr_n in dev.attributes:
             try:
                 conf = dev.attributes[attr_n]
-                split = attr_n.split('/')
-                a_n = split[-1]
-                d_n = attr_n.replace('/' + a_n, '')
-                conf['device_name'] = d_n
-                conf['attr_name'] = a_n
-                d_p = tango.DeviceProxy(d_n)
-                conf['device'] = d_p
-                try:
-                    d_p.ping(a_n)
-                    conf['alive'] = True
-                except:
+                if 'alive' not in conf or not conf['alive']:
                     conf['alive'] = False
-                a_c = d_p.get_attribute_config_ex(a_n)
-                attr = tango.Attr(attr_n, tango.DevDouble, tango.AttrWriteType.READ)
-                dev.add_attribute(attr, dev.read_general)
-
-                attribute_history(self, attr_name, depth,
-                                  extract_as=ExtractAs.Numpy)→sequence < DeviceAttributeHistory >
-
-                get_attribute_config_ex(self, name)→AttributeInfoListEx:
-
-                is_attribute_polled(self, attr_name)→bool
-
-                is_locked(self)→bool
-
-                ping(self)→int
-                time                 elapsed in microseconds
-                Throwsexception if                 device is not alive
-
-                poll_attribute(self, attr_name, period)→None
-                Add
-                an
-                attribute
-                to
-                the
-                list
-                of
-                polled
-                attributes.Parametersattr_name(str)
-                attribute
-                nameperiod(int)
-                polling
-                period in milliseconds
-
-                polling_status(self)→sequence < str >
-                Return(sequence < str >)
-                One
-                string
-                for each polled command / attribute.Eachstring is multi-line string with:•
-                attribute / command
-                name•  attribute / command
-                polling
-                period in milliseconds•  attribute / command
-                polling
-                ring
-                buffer•  time
-                needed
-                for last attribute / command execution in milliseconds•  time since data in the ring buffer has not been updated•  delta time between the last records in the ring buffer•  exception parameters in case of the last execution failed
-
-                set_attribute_config(self, attr_info_ex) -> None
-                Change the extended attribute configuration
-                for the specified attributeParametersattr_info_ex(AttributeInfoEx) extended attribute informa-tion
-
+                    d_n, a_n = split_attribute_name(attr_n)
+                    conf['device_name'] = d_n
+                    conf['attr_name'] = a_n
+                    d_p = tango.DeviceProxy(d_n)
+                    conf['device'] = d_p
+                    try:
+                        d_p.ping(a_n)
+                        a_c = d_p.get_attribute_config_ex(a_n)
+                        p_s = convert_polling_status(d_p.polling_status(), a_n)
+                        a = 'depth'
+                        if a in conf and conf[a] > p_s[a]:
+                            dev.logger.debug('Polling depth mismatch %s > %s', conf[a], p_s[a])
+                        a = 'period'
+                        if a in conf and conf[a] != p_s[a]:
+                            dev.logger.debug('Polling period mismatch %s != %s', conf[a], p_s[a])
+                        # create local attribute
+                        attr = tango.Attr(attr_n, [[float], [float]], tango.AttrWriteType.READ)
+                        dev.add_attribute(attr, dev.read_general)
+                        conf['attribute'] = attr
+                        conf['alive'] = True
+                    except:
+                        conf['alive'] = False
 
             except:
                 pass
 
 
+def convert_polling_status(p_s, name):
+    result = {'period': 0, 'depth': 0}
+    s1 = 'Polled attribute name = '
+    s2 = 'Polling period (mS) = '
+    s3 = 'Polling ring buffer depth = '
+    # s4 = 'Time needed for the last attribute reading (mS) = '
+    # s4 = 'Data not updated since 54 mS'
+    # s6 = 'Delta between last records (in mS) = 98, 100, 101, 98'
+    n1 = s1 + name
+    for s in p_s:
+        if s.startswith(n1):
+            for ss in s.split('\n'):
+                try:
+                    if ss.startswith(s2):
+                        result['period'] = int(ss.replace(s2, ''))
+                    elif ss.startswith(s3):
+                        result['depth'] = int(ss.replace(s3, ''))
+                except:
+                    pass
+    return result
+
+    #             attribute_history(self, attr_name, depth,
+    #                               extract_as=ExtractAs.Numpy)→sequence < DeviceAttributeHistory >
+    #
+    #             is_attribute_polled(self, attr_name)→bool
+    #
+    #             is_locked(self)→bool
+    #
+    #             poll_attribute(self, attr_name, period)→None
+    #             Add
+    #             an
+    #             attribute
+    #             to
+    #             the
+    #             list
+    #             of
+    #             polled
+    #             attributes.Parametersattr_name(str)
+    #             attribute
+    #             nameperiod(int)
+    #             polling
+    #             period in milliseconds
+    #
+    #
+    #
+    #             set_attribute_config(self, attr_info_ex) -> None
+    #             Change the extended attribute configuration
+    #             for the specified attributeParametersattr_info_ex(AttributeInfoEx) extended attribute informa-tion
+
+
+def split_attribute_name(name):
+    split = name.split('/')
+    a_n = split[-1]
+    d_n = name.replace('/' + a_n, '')
+    return d_n, a_n
+
+
+def read_attribute_history(name, delta_t=None):
+    logger = TangoAttributeHistoryServer.config_logger()
+    conf = {}
+    history = [[], []]
+    conf['alive'] = False
+    d_n, a_n = split_attribute_name(name)
+    conf['device_name'] = d_n
+    conf['attribute_name'] = a_n
+    d_p = tango.DeviceProxy(d_n)
+    conf['device_proxy'] = d_p
+    try:
+        if not d_p.is_attribute_polled(a_n):
+            logger.debug('Polling is disabled for %s', name)
+            return history
+        # test if device is alive
+        d_p.ping()
+        p_s = convert_polling_status(d_p.polling_status(), a_n)
+        a = 'depth'
+        if p_s[a] <= 0:
+            logger.debug('Polling is disabled for %s', name)
+            return history
+        if delta_t is not None:
+            n = int(delta_t * 1000.0 / p_s['period'])
+        else:
+            n = int(p_s[a])
+        if n > p_s[a]:
+            logger.debug('Polling depth is only for %s s', p_s[a]*p_s['period']/1000.0)
+            n = p_s[a]
+        a = 'period'
+        conf[a] = p_s[a]
+        data = d_p.attribute_history(a_n, n)
+        history = numpy.zeros((n, 2))
+        for i, d in enumerate(data):
+            history[i, 0] = d.value
+            history[i, 1] = d.time.totime()
+        conf['alive'] = True
+    except:
+        logger.debug('', exc_info=True)
+        conf['alive'] = False
+    return history
+
+
 if __name__ == "__main__":
-    TangoShotDumperServer.run_server(post_init_callback=post_init_callback, event_loop=looping)
+    #TangoShotDumperServer.run_server(post_init_callback=post_init_callback, event_loop=looping)
+    an = 'sys/tg_test/1/double_scalar'
+    a = read_attribute_history(an)
+    print(a, a[:, 1].ptp())
