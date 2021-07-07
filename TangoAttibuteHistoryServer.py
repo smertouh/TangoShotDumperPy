@@ -19,9 +19,6 @@ from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import Device, attribute, command, pipe, device_property
 
 from TangoServerPrototype import TangoServerPrototype, Configuration
-from TangoServerPrototype import TangoServerPrototype.conv, Configuration
-
-NaN = float('nan')
 
 
 class TangoAttributeHistoryServer(TangoServerPrototype):
@@ -41,7 +38,6 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
         # set default properties
         self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
         self.device_proxy = tango.DeviceProxy(self.get_name())
-        self.shot_number_value = 0
         self.shot_time_value = 0.0
         self.config = Configuration()
         # configure device
@@ -50,16 +46,14 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             # read config from device properties
             level = self.get_device_property('log_level', logging.DEBUG)
             self.logger.setLevel(level)
-            # read config from file
+            # read config from file and set config
             config_file = self.get_device_property('config_file', 'TangoAttributeHistoryServer.json')
             self.config = Configuration(config_file)
             self.set_config()
-            # read shot number
-            n = self.get_device_property('shot_number', 0)
-            self.write_shot_number(n)
-            # read shot time
+            # read and set shot time
             t = self.get_device_property('shot_time', 0.0)
             self.write_shot_time(t)
+            # configure remote attributes
             self.attributes = {}
             properties = self.properties()
             for prop in properties:
@@ -87,12 +81,10 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             self.logger.setLevel(self.config.get('log_level', logging.DEBUG))
             self.logger.debug("Log level set to %s" % self.logger.level)
             # Restore server parameters
-            self.sleep = self.config.get("sleep", 1.0)
-            self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
             self.shot = self.config.get('shot', 0)
             # Restore devices
             items = self.config.get("devices", [])
-            self.device_list = []
+            self.devices = []
             if len(items) <= 0:
                 self.logger.error("No devices declared")
                 return False
@@ -102,7 +94,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                         exec(unit["exec"])
                     if 'eval' in unit:
                         item = eval(unit["eval"])
-                        self.device_list.append(item)
+                        self.devices.append(item)
                         self.logger.info("%s has been added" % item)
                     else:
                         self.logger.info("No 'eval' option for %s" % unit)
@@ -115,6 +107,44 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             self.logger.info('Configuration read error')
             self.logger.debug('', exc_info=True)
             return False
+
+    def configure_target(self, name, param):
+        conf = {'alive': False}
+        d_n, a_n = TangoAttributeHistoryServer.split_attribute_name(name)
+        conf['device_name'] = d_n
+        conf['attribute_name'] = a_n
+        d_p = tango.DeviceProxy(d_n)
+        conf['device_proxy'] = d_p
+        try:
+            if not d_p.is_attribute_polled(a_n):
+                self.logger.debug('Polling is disabled for %s', name)
+                return conf
+            # test if device is alive
+            d_p.ping()
+            p_s = TangoAttributeHistoryServer.convert_polling_status(d_p.polling_status(), a_n)
+            a = 'depth'
+            if p_s[a] <= 0:
+                self.logger.debug('Polling is disabled for %s', name)
+                return conf
+            if delta_t is not None:
+                n = int(delta_t * 1000.0 / p_s['period'])
+            else:
+                n = int(p_s[a])
+            if n > p_s[a]:
+                self.logger.debug('Polling depth is only for %s s', p_s[a] * p_s['period'] / 1000.0)
+                n = p_s[a]
+            a = 'period'
+            conf[a] = p_s[a]
+            data = d_p.attribute_history(a_n, n)
+            history = numpy.zeros((n, 2))
+            for i, d in enumerate(data):
+                history[i, 1] = d.value
+                history[i, 0] = d.time.totime()
+            conf['alive'] = True
+        except:
+            logger.debug('', exc_info=True)
+            conf['alive'] = False
+        return history
 
     # def restore_polling(self, attr_name: str):
     #     try:

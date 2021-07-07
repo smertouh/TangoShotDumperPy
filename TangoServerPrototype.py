@@ -5,31 +5,25 @@
 Shot dumper tango device server
 A. L. Sanin, started 05.07.2021
 """
-import datetime
 import logging
-import os
 import sys
-import time
 import json
-import zipfile
 
 import numpy
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import Device, attribute, command, pipe, device_property
 
-NaN = float('nan')
-
 
 class TangoServerPrototype(Device):
     version = '0.0'
     device_list = []
 
-    shot_number = attribute(label="shot_number", dtype=int,
-                            display_level=DispLevel.OPERATOR,
-                            access=AttrWriteType.READ,
-                            unit="", format="%d",
-                            doc="Shot number")
+    # shot_number = attribute(label="shot_number", dtype=int,
+    #                         display_level=DispLevel.OPERATOR,
+    #                         access=AttrWriteType.READ,
+    #                         unit="", format="%d",
+    #                         doc="Shot number")
 
     @command(dtype_in=int)
     def set_log_level(self, level):
@@ -74,12 +68,12 @@ class TangoServerPrototype(Device):
         self.error_stream(msg)
         self.logger.debug('', exc_info=True)
 
-    def read_shot_number(self):
-        return self.shot_number_value
-
-    def write_shot_number(self, value):
-        self.set_device_property('shot_number', str(value))
-        self.shot_number_value = value
+    # def read_shot_number(self):
+    #     return self.shot_number_value
+    #
+    # def write_shot_number(self, value):
+    #     self.set_device_property('shot_number', str(value))
+    #     self.shot_number_value = value
 
     def get_device_property(self, prop: str, default=None):
         try:
@@ -170,7 +164,6 @@ class TangoServerPrototype(Device):
         a_n = split[-1]
         d_n = name.replace('/' + a_n, '')
         return d_n, a_n
-
 
 
 def looping():
