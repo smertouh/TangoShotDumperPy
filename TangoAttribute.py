@@ -42,8 +42,8 @@ class TangoAttribute(DumperItem):
         self.channel.read_y()
         if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.IMAGE:
             # self.logger.debug("IMAGE attribute %s" % self.attribute_name)
-            self.channel.x = self.channel.y_attr.value[1, :]
-            self.channel.y = self.channel.y_attr.value[0, :]
+            self.channel.x = self.channel.y_attr.value[:, 0]
+            self.channel.y = self.channel.y_attr.value[:, 1]
         elif self.channel.y_attr.data_format != tango._tango.AttrDataFormat.SCALAR:
             self.channel.read_x()
 

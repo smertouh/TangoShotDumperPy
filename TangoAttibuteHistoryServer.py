@@ -373,8 +373,8 @@ def read_attribute_history(name, delta_t=None):
         data = d_p.attribute_history(a_n, n)
         history = numpy.zeros((n, 2))
         for i, d in enumerate(data):
-            history[i, 0] = d.value
-            history[i, 1] = d.time.totime()
+            history[i, 1] = d.value
+            history[i, 0] = d.time.totime()
         conf['alive'] = True
     except:
         logger.debug('', exc_info=True)
