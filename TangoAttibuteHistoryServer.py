@@ -18,31 +18,20 @@ import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import Device, attribute, command, pipe, device_property
 
+from TangoServerPrototype import TangoServerPrototype, Configuration
+from TangoServerPrototype import TangoServerPrototype.conv, Configuration
+
 NaN = float('nan')
 
 
-class TangoAttributeHistoryServer(Device):
-    version = '1.0'
-    server_device_list = []
-
-    shot_number = attribute(label="shot_number", dtype=int,
-                            display_level=DispLevel.OPERATOR,
-                            access=AttrWriteType.READ,
-                            unit="", format="%d",
-                            doc="Shot number")
+class TangoAttributeHistoryServer(TangoServerPrototype):
+    version = '0.0'
 
     shot_time = attribute(label="shot_time", dtype=float,
                           display_level=DispLevel.OPERATOR,
                           access=AttrWriteType.READ,
                           unit="s", format="%d",
                           doc="Shot time")
-
-    @command(dtype_in=int)
-    def set_log_level(self, level):
-        self.logger.setLevel(level)
-        msg = '%s Log level set to %d' % (self.get_name(), level)
-        self.logger.info(msg)
-        self.info_stream(msg)
 
     @command(dtype_in=str, dtype_out=str)
     def read_history(self, name):
@@ -52,23 +41,18 @@ class TangoAttributeHistoryServer(Device):
         # set default properties
         self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
         self.device_proxy = tango.DeviceProxy(self.get_name())
-        self.log_file = None
-        self.zip_file = None
-        self.out_root_dir = '.\\data\\'
-        self.out_dir = None
-        self.locked = False
         self.shot_number_value = 0
         self.shot_time_value = 0.0
         self.config = Configuration()
-        # config
+        # configure device
         try:
             self.set_state(DevState.INIT)
             # read config from device properties
             level = self.get_device_property('log_level', logging.DEBUG)
             self.logger.setLevel(level)
             # read config from file
-            self.config_file = self.get_device_property('config_file', 'TangoAttributeHistoryServer.json')
-            self.config = Configuration(self.config_file)
+            config_file = self.get_device_property('config_file', 'TangoAttributeHistoryServer.json')
+            self.config = Configuration(config_file)
             self.set_config()
             # read shot number
             n = self.get_device_property('shot_number', 0)
@@ -76,39 +60,19 @@ class TangoAttributeHistoryServer(Device):
             # read shot time
             t = self.get_device_property('shot_time', 0.0)
             self.write_shot_time(t)
-            properties = self.properties()
             self.attributes = {}
+            properties = self.properties()
             for prop in properties:
                 try:
                     self.attributes[prop] = eval(properties[prop])
                 except:
                     pass
-            if self not in TangoAttributeHistoryServer.server_device_list:
-                TangoAttributeHistoryServer.server_device_list.append(self)
+            if self not in TangoAttributeHistoryServer.device_list:
+                TangoAttributeHistoryServer.device_list.append(self)
             self.logger.info('Device %s added with %s attributes', self.get_name(), len(self.attributes))
         except:
-            msg = 'Exception in TangoAttributeHistoryServer'
-            self.logger.error(msg)
-            self.error_stream(msg)
-            self.logger.debug('', exc_info=True)
+            self.log_exception()
             self.set_state(DevState.FAULT)
-
-    def log_exception(self, message=None, *args, level=logging.ERROR):
-        if message is None:
-            ex_type, ex_value, traceback = sys.exc_info()
-            message = 'Exception %s %s'
-            args = (ex_type, ex_value)
-        msg = message % args
-        self.logger.log(level, msg)
-        self.error_stream(msg)
-        self.logger.debug('', exc_info=True)
-
-    def read_shot_number(self):
-        return self.shot_number_value
-
-    def write_shot_number(self, value):
-        self.set_device_property('shot_number', str(value))
-        self.shot_number_value = value
 
     def read_shot_time(self):
         return self.shot_time_value
@@ -116,62 +80,6 @@ class TangoAttributeHistoryServer(Device):
     def write_shot_time(self, value):
         self.set_device_property('shot_time', str(value))
         self.shot_time_value = value
-
-    def get_device_property(self, prop: str, default=None):
-        try:
-            # self.assert_proxy()
-            pr = self.device_proxy.get_property(prop)[prop]
-            result = None
-            if len(pr) > 0:
-                result = pr[0]
-            if default is None:
-                return result
-            if result is None or result == '':
-                result = default
-            else:
-                result = type(default)(result)
-        except:
-            # self.logger.debug('Error reading property %s for %s', prop, self.name)
-            result = default
-        return result
-
-    def set_device_property(self, prop: str, value: str):
-        try:
-            # self.assert_proxy()
-            self.device_proxy.put_property({prop: value})
-        except:
-            self.logger.info('Error writing property %s for %s', prop, self.device_name)
-            self.logger.debug('', exc_info=True)
-
-    def property_list(self, filter: str = '*'):
-        return self.device_proxy.get_property_list(filter)
-
-    def properties(self, filter: str = '*'):
-        # returns dictionary with device properties
-        names = self.device_proxy.get_property_list(filter)
-        return self.device_proxy.get_property(names)
-
-    @staticmethod
-    def config_logger(name: str = __name__, level: int = logging.DEBUG):
-        logger = logging.getLogger(name)
-        if not logger.hasHandlers():
-            logger.propagate = False
-            logger.setLevel(level)
-            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(log_formatter)
-            logger.addHandler(console_handler)
-        return logger
-
-    def config_get(self, name, default=None):
-        try:
-            result = self.config.get(name, default)
-            if default is not None:
-                result = type(default)(result)
-        except:
-            result = default
-        return result
 
     def set_config(self):
         try:
@@ -208,17 +116,6 @@ class TangoAttributeHistoryServer(Device):
             self.logger.debug('', exc_info=True)
             return False
 
-    def write_config(self, file_name):
-        try:
-            self.config['shot'] = self.shot
-            with open(file_name, 'w') as configfile:
-                configfile.write(json.dumps(self.config, indent=4))
-            self.logger.debug('Configuration saved to %s' % file_name)
-        except:
-            self.logger.info('Configuration save error to %s' % file_name)
-            self.logger.debug('', exc_info=True)
-            return False
-
     # def restore_polling(self, attr_name: str):
     #     try:
     #         p = self.get_attribute_property(attr_name, 'polling')
@@ -252,7 +149,7 @@ def post_init_callback():
                 conf = dev.attributes[attr_n]
                 if 'alive' not in conf or not conf['alive']:
                     conf['alive'] = False
-                    d_n, a_n = split_attribute_name(attr_n)
+                    d_n, a_n = dev.split_attribute_name(attr_n)
                     conf['device_name'] = d_n
                     conf['attr_name'] = a_n
                     d_p = tango.DeviceProxy(d_n)
@@ -260,7 +157,7 @@ def post_init_callback():
                     try:
                         d_p.ping(a_n)
                         a_c = d_p.get_attribute_config_ex(a_n)
-                        p_s = convert_polling_status(d_p.polling_status(), a_n)
+                        p_s = TangoAttributeHistoryServer.convert_polling_status(d_p.polling_status(), a_n)
                         a = 'depth'
                         if a in conf and conf[a] > p_s[a]:
                             dev.logger.debug('Polling depth mismatch %s > %s', conf[a], p_s[a])
@@ -278,27 +175,6 @@ def post_init_callback():
             except:
                 pass
 
-
-def convert_polling_status(p_s, name):
-    result = {'period': 0, 'depth': 0}
-    s1 = 'Polled attribute name = '
-    s2 = 'Polling period (mS) = '
-    s3 = 'Polling ring buffer depth = '
-    # s4 = 'Time needed for the last attribute reading (mS) = '
-    # s4 = 'Data not updated since 54 mS'
-    # s6 = 'Delta between last records (in mS) = 98, 100, 101, 98'
-    n1 = s1 + name
-    for s in p_s:
-        if s.startswith(n1):
-            for ss in s.split('\n'):
-                try:
-                    if ss.startswith(s2):
-                        result['period'] = int(ss.replace(s2, ''))
-                    elif ss.startswith(s3):
-                        result['depth'] = int(ss.replace(s3, ''))
-                except:
-                    pass
-    return result
 
     #             attribute_history(self, attr_name, depth,
     #                               extract_as=ExtractAs.Numpy)→sequence < DeviceAttributeHistory >
@@ -329,19 +205,12 @@ def convert_polling_status(p_s, name):
     #             for the specified attributeParametersattr_info_ex(AttributeInfoEx) extended attribute informa-tion
 
 
-def split_attribute_name(name):
-    split = name.split('/')
-    a_n = split[-1]
-    d_n = name.replace('/' + a_n, '')
-    return d_n, a_n
-
-
 def read_attribute_history(name, delta_t=None):
     logger = TangoAttributeHistoryServer.config_logger()
     conf = {}
     history = [[], []]
     conf['alive'] = False
-    d_n, a_n = split_attribute_name(name)
+    d_n, a_n = TangoAttributeHistoryServer.split_attribute_name(name)
     conf['device_name'] = d_n
     conf['attribute_name'] = a_n
     d_p = tango.DeviceProxy(d_n)
@@ -352,7 +221,7 @@ def read_attribute_history(name, delta_t=None):
             return history
         # test if device is alive
         d_p.ping()
-        p_s = convert_polling_status(d_p.polling_status(), a_n)
+        p_s = TangoAttributeHistoryServer.convert_polling_status(d_p.polling_status(), a_n)
         a = 'depth'
         if p_s[a] <= 0:
             logger.debug('Polling is disabled for %s', name)
@@ -376,39 +245,6 @@ def read_attribute_history(name, delta_t=None):
         logger.debug('', exc_info=True)
         conf['alive'] = False
     return history
-
-
-class Configuration():
-    def __init__(self, file_name=None, default=None):
-        if default is None:
-            default = {}
-        if file_name is not None:
-            if not self.read(file_name):
-                self.data = default
-
-    def get(self, name, default=None):
-        try:
-            result = self.data.get(name, default)
-            if default is not None:
-                result = type(default)(result)
-        except:
-            result = default
-        return result
-
-    def add(self, name: str, value):
-        self.data[name] = value
-
-    def read(self, file_name):
-        # Read config from file
-        with open(file_name, 'r') as configfile:
-            self.data = json.loads(configfile.read())
-            self.add('file_name', file_name)
-        return True
-
-    def write(self, file_name):
-        with open(file_name, 'w') as configfile:
-            configfile.write(json.dumps(self.data, indent=4))
-        return True
 
 
 if __name__ == "__main__":
