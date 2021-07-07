@@ -59,7 +59,7 @@ class TangoAttributeHistoryServer(Device):
         self.locked = False
         self.shot_number_value = 0
         self.shot_time_value = 0.0
-        self.config = {}
+        self.config = Configuration()
         # config
         try:
             self.set_state(DevState.INIT)
@@ -68,7 +68,8 @@ class TangoAttributeHistoryServer(Device):
             self.logger.setLevel(level)
             # read config from file
             self.config_file = self.get_device_property('config_file', 'TangoAttributeHistoryServer.json')
-            self.read_config(self.config_file)
+            self.config = Configuration(self.config_file)
+            self.set_config()
             # read shot number
             n = self.get_device_property('shot_number', 0)
             self.write_shot_number(n)
@@ -172,21 +173,17 @@ class TangoAttributeHistoryServer(Device):
             result = default
         return result
 
-    def read_config(self, file_name):
+    def set_config(self):
         try:
-            # Read config from file
-            with open(file_name, 'r') as configfile:
-                s = configfile.read()
-            self.config = json.loads(s)
-            # Restore log level
-            self.logger.setLevel(self.config_get('log_level', logging.DEBUG))
+            # log level
+            self.logger.setLevel(self.config.get('log_level', logging.DEBUG))
             self.logger.debug("Log level set to %s" % self.logger.level)
             # Restore server parameters
-            self.sleep = self.config_get("sleep", 1.0)
-            self.out_root_dir = self.config_get("out_root_dir", '.\\data\\')
-            self.shot = self.config_get('shot', 0)
+            self.sleep = self.config.get("sleep", 1.0)
+            self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
+            self.shot = self.config.get('shot', 0)
             # Restore devices
-            items = self.config_get("devices", [])
+            items = self.config.get("devices", [])
             self.device_list = []
             if len(items) <= 0:
                 self.logger.error("No devices declared")
@@ -204,10 +201,10 @@ class TangoAttributeHistoryServer(Device):
                 except:
                     self.logger.warning("Error in %s" % str(unit))
                     self.logger.debug('', exc_info=True)
-            self.logger.debug('Configuration restored from %s' % file_name)
+            self.logger.debug('Configuration restored from %s' % self.config.get('file_name'))
             return True
         except:
-            self.logger.info('Configuration read error from %s' % file_name)
+            self.logger.info('Configuration read error')
             self.logger.debug('', exc_info=True)
             return False
 
@@ -221,7 +218,6 @@ class TangoAttributeHistoryServer(Device):
             self.logger.info('Configuration save error to %s' % file_name)
             self.logger.debug('', exc_info=True)
             return False
-
 
     # def restore_polling(self, attr_name: str):
     #     try:
@@ -366,7 +362,7 @@ def read_attribute_history(name, delta_t=None):
         else:
             n = int(p_s[a])
         if n > p_s[a]:
-            logger.debug('Polling depth is only for %s s', p_s[a]*p_s['period']/1000.0)
+            logger.debug('Polling depth is only for %s s', p_s[a] * p_s['period'] / 1000.0)
             n = p_s[a]
         a = 'period'
         conf[a] = p_s[a]
@@ -382,8 +378,41 @@ def read_attribute_history(name, delta_t=None):
     return history
 
 
+class Configuration():
+    def __init__(self, file_name=None, default=None):
+        if default is None:
+            default = {}
+        if file_name is not None:
+            if not self.read(file_name):
+                self.data = default
+
+    def get(self, name, default=None):
+        try:
+            result = self.data.get(name, default)
+            if default is not None:
+                result = type(default)(result)
+        except:
+            result = default
+        return result
+
+    def add(self, name: str, value):
+        self.data[name] = value
+
+    def read(self, file_name):
+        # Read config from file
+        with open(file_name, 'r') as configfile:
+            self.data = json.loads(configfile.read())
+            self.add('file_name', file_name)
+        return True
+
+    def write(self, file_name):
+        with open(file_name, 'w') as configfile:
+            configfile.write(json.dumps(self.data, indent=4))
+        return True
+
+
 if __name__ == "__main__":
-    #TangoShotDumperServer.run_server(post_init_callback=post_init_callback, event_loop=looping)
+    # TangoShotDumperServer.run_server(post_init_callback=post_init_callback, event_loop=looping)
     an = 'sys/tg_test/1/double_scalar'
     a = read_attribute_history(an)
     print(a, a[:, 1].ptp())
