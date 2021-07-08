@@ -15,7 +15,7 @@ import zipfile
 
 import numpy
 import tango
-from tango import AttrQuality, AttrWriteType, DispLevel, DevState
+from tango import AttrQuality, AttrWriteType, DispLevel, DevState, AttributeInfoEx
 from tango.server import Device, attribute, command, pipe, device_property
 
 from TangoServerPrototype import TangoServerPrototype, Configuration
@@ -23,6 +23,7 @@ from TangoServerPrototype import TangoServerPrototype, Configuration
 
 class TangoAttributeHistoryServer(TangoServerPrototype):
     version = '0.0'
+    tango_devices = []
 
     shot_time = attribute(label="shot_time", dtype=float,
                           display_level=DispLevel.OPERATOR,
@@ -57,10 +58,12 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             self.attributes = {}
             properties = self.properties()
             for prop in properties:
-                try:
-                    self.attributes[prop] = eval(properties[prop])
-                except:
-                    pass
+                if prop not in ('log_level', 'config_file'):
+                    try:
+                        params =  json.loads(properties[prop])
+                        self.attributes[prop] = self.configure_target(prop, params)
+                    except:
+                        self.log_exception('Attribute config error')
             if self not in TangoAttributeHistoryServer.device_list:
                 TangoAttributeHistoryServer.device_list.append(self)
             self.logger.info('Device %s added with %s attributes', self.get_name(), len(self.attributes))
@@ -80,96 +83,59 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             # log level
             self.logger.setLevel(self.config.get('log_level', logging.DEBUG))
             self.logger.debug("Log level set to %s" % self.logger.level)
-            # Restore server parameters
-            self.shot = self.config.get('shot', 0)
-            # Restore devices
-            items = self.config.get("devices", [])
-            self.devices = []
-            if len(items) <= 0:
-                self.logger.error("No devices declared")
-                return False
-            for unit in items:
-                try:
-                    if 'exec' in unit:
-                        exec(unit["exec"])
-                    if 'eval' in unit:
-                        item = eval(unit["eval"])
-                        self.devices.append(item)
-                        self.logger.info("%s has been added" % item)
-                    else:
-                        self.logger.info("No 'eval' option for %s" % unit)
-                except:
-                    self.logger.warning("Error in %s" % str(unit))
-                    self.logger.debug('', exc_info=True)
             self.logger.debug('Configuration restored from %s' % self.config.get('file_name'))
             return True
         except:
-            self.logger.info('Configuration read error')
-            self.logger.debug('', exc_info=True)
+            self.log_exception('Configuration set error')
             return False
 
-    def configure_target(self, name, param):
-        conf = {'alive': False}
+    def configure_target(self, name, param=None):
+        if param is None:
+            param = {}
+        conf = {'alive': False, 'attribute': None, 'local_name': name.replace('/', '_')}
         d_n, a_n = TangoAttributeHistoryServer.split_attribute_name(name)
         conf['device_name'] = d_n
         conf['attribute_name'] = a_n
-        d_p = tango.DeviceProxy(d_n)
+        if d_n in TangoAttributeHistoryServer.tango_devices:
+            d_p = TangoAttributeHistoryServer.tango_devices[d_n]
+        else:
+            d_p = tango.DeviceProxy(d_n)
+            TangoAttributeHistoryServer.tango_devices[d_n] = d_p
+            d_p.alive = False
+        if not d_p.alive:
+            # test if device is alive
+            try:
+                d_p.ping()
+                d_p.alive = True
+            except:
+                d_p.alive = False
         conf['device_proxy'] = d_p
+        if not d_p.alive:
+            self.logger.debug('Device is offline for %s', name)
+            return conf
         try:
             if not d_p.is_attribute_polled(a_n):
-                self.logger.debug('Polling is disabled for %s', name)
+                period = d_p.get_attribute_poll_period(a_n)
+                d_p.poll_attribute(a_n, period)
+                self.logger.debug('Polling has been restarted for %s', name)
+            depth = d_p.get_attr_poll_ring_depth(a_n)
+            period = d_p.get_attribute_poll_period(a_n)
+            conf['period'] = period
+            conf['depth'] = depth
+            if period <= 0:
+                self.logger.warning('Polling can not be enabled for %s', name)
                 return conf
-            # test if device is alive
-            d_p.ping()
-            p_s = TangoAttributeHistoryServer.convert_polling_status(d_p.polling_status(), a_n)
-            a = 'depth'
-            if p_s[a] <= 0:
-                self.logger.debug('Polling is disabled for %s', name)
-                return conf
-            if delta_t is not None:
-                n = int(delta_t * 1000.0 / p_s['period'])
+            if 'delta_t' in param:
+                n = int(param['delta_t'] * 1000.0 / period)
             else:
-                n = int(p_s[a])
-            if n > p_s[a]:
-                self.logger.debug('Polling depth is only for %s s', p_s[a] * p_s['period'] / 1000.0)
-                n = p_s[a]
-            a = 'period'
-            conf[a] = p_s[a]
-            data = d_p.attribute_history(a_n, n)
-            history = numpy.zeros((n, 2))
-            for i, d in enumerate(data):
-                history[i, 1] = d.value
-                history[i, 0] = d.time.totime()
+                n = int(depth)
+            if n > depth:
+                self.logger.warning('Polling depth is only %s s for %s', depth * period / 1000.0, name)
             conf['alive'] = True
         except:
-            logger.debug('', exc_info=True)
+            self.log_exception('Attribute config exception')
             conf['alive'] = False
-        return history
-
-    # def restore_polling(self, attr_name: str):
-    #     try:
-    #         p = self.get_attribute_property(attr_name, 'polling')
-    #         pn = int(p)
-    #         self.dp.poll_attribute(attr_name, pn)
-    #     except:
-    #         #self.logger.warning('', exc_info=True)
-    #         pass
-
-
-def looping():
-    t0 = time.time()
-    for dev in TangoAttributeHistoryServer.server_device_list:
-        time.sleep(dev.config['sleep'])
-        try:
-            dev.process()
-            # msg = '%s processed' % dev.name
-            # dev.logger.debug(msg)
-            # dev.debug_stream(msg)
-        except:
-            msg = '%s process error' % dev
-            dev.logger.warning(msg)
-            dev.error_stream(msg)
-            dev.logger.debug('', exc_info=True)
+        return conf
 
 
 def post_init_callback():
@@ -177,62 +143,23 @@ def post_init_callback():
         for attr_n in dev.attributes:
             try:
                 conf = dev.attributes[attr_n]
-                if 'alive' not in conf or not conf['alive']:
-                    conf['alive'] = False
-                    d_n, a_n = dev.split_attribute_name(attr_n)
-                    conf['device_name'] = d_n
-                    conf['attr_name'] = a_n
-                    d_p = tango.DeviceProxy(d_n)
-                    conf['device'] = d_p
-                    try:
-                        d_p.ping(a_n)
-                        a_c = d_p.get_attribute_config_ex(a_n)
-                        p_s = TangoAttributeHistoryServer.convert_polling_status(d_p.polling_status(), a_n)
-                        a = 'depth'
-                        if a in conf and conf[a] > p_s[a]:
-                            dev.logger.debug('Polling depth mismatch %s > %s', conf[a], p_s[a])
-                        a = 'period'
-                        if a in conf and conf[a] != p_s[a]:
-                            dev.logger.debug('Polling period mismatch %s != %s', conf[a], p_s[a])
+                if conf['alive']:
+                    if conf['attribute'] is None:
                         # create local attribute
-                        attr = tango.Attr(attr_n, [[float], [float]], tango.AttrWriteType.READ)
+                        attr = tango.Attr(conf['local_name'], [[float], [float]], tango.AttrWriteType.READ)
                         dev.add_attribute(attr, dev.read_general)
                         conf['attribute'] = attr
-                        conf['alive'] = True
-                    except:
-                        conf['alive'] = False
-
+                        info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])
+                        #             attr_info_ex(AttributeInfoEx) extended attribute information
+                        info = AttributeInfoEx()
+                        info.data_format = tango.AttrDataFormat.IMAGE
+                        info.data_type = tango.AttrDataFormat.IMAGE
+                        info.writable = False
+                        dev.set_attribute_config(info)
             except:
                 pass
 
 
-    #             attribute_history(self, attr_name, depth,
-    #                               extract_as=ExtractAs.Numpy)→sequence < DeviceAttributeHistory >
-    #
-    #             is_attribute_polled(self, attr_name)→bool
-    #
-    #             is_locked(self)→bool
-    #
-    #             poll_attribute(self, attr_name, period)→None
-    #             Add
-    #             an
-    #             attribute
-    #             to
-    #             the
-    #             list
-    #             of
-    #             polled
-    #             attributes.Parametersattr_name(str)
-    #             attribute
-    #             nameperiod(int)
-    #             polling
-    #             period in milliseconds
-    #
-    #
-    #
-    #             set_attribute_config(self, attr_info_ex) -> None
-    #             Change the extended attribute configuration
-    #             for the specified attributeParametersattr_info_ex(AttributeInfoEx) extended attribute informa-tion
 
 
 def read_attribute_history(name, delta_t=None):

@@ -58,14 +58,14 @@ class TangoServerPrototype(Device):
             self.log_exception()
             self.set_state(DevState.FAULT)
 
-    def log_exception(self, message=None, *args, level=logging.ERROR):
+    def log_exception(self, message=None, level=logging.ERROR):
+        ex_type, ex_value, traceback = sys.exc_info()
+        tail = ' %s %s' % (ex_type, ex_value)
         if message is None:
-            ex_type, ex_value, traceback = sys.exc_info()
-            message = 'Exception %s %s'
-            args = (ex_type, ex_value)
-        msg = message % args
-        self.logger.log(level, msg)
-        self.error_stream(msg)
+            message = 'Exception'
+        message += tail
+        self.logger.log(level, message)
+        self.error_stream(message)
         self.logger.debug('', exc_info=True)
 
     # def read_shot_number(self):

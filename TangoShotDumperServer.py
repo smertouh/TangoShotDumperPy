@@ -8,7 +8,6 @@ A. L. Sanin, started 25.06.2021
 import datetime
 import logging
 import os
-import sys
 import time
 import json
 import zipfile
