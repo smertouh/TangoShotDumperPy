@@ -60,7 +60,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             for prop in properties:
                 if prop not in ('log_level', 'config_file'):
                     try:
-                        params =  json.loads(properties[prop])
+                        params = json.loads(properties[prop])
                         self.attributes[prop] = self.configure_target(prop, params)
                     except:
                         self.log_exception('Attribute config error')
@@ -160,12 +160,10 @@ def post_init_callback():
                 pass
 
 
-
-
 def read_attribute_history(name, delta_t=None):
     logger = TangoAttributeHistoryServer.config_logger()
     conf = {}
-    history = [[], []]
+    history = numpy.empty((0,2))
     conf['alive'] = False
     d_n, a_n = TangoAttributeHistoryServer.split_attribute_name(name)
     conf['device_name'] = d_n
