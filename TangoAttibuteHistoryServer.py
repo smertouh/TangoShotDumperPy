@@ -123,7 +123,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             if not d_p.ready:
                 self.logger.debug('Device is off for %s', name)
                 return conf
-            self.logger.debug('Device for %s is on', name)
+            self.logger.debug('Device for %s detected', name)
             # check if remote attribute exists
             try:
                 result = d_p.read_attribute(a_n)
@@ -141,21 +141,6 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                 self.logger.warning('Polling can not be enabled for %s', name)
                 return conf
             self.logger.debug('Polling has been restarted for %s', name)
-            # create local attribute
-            if conf['attribute'] is None:
-                # create local attribute
-                attr = tango.Attr(conf['local_name'], [[float], [float]], tango.AttrWriteType.READ)
-                self.add_attribute(attr, self.read_attribute)
-                conf['attribute'] = attr
-                # set local attr info according to the remote one
-                info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])
-                #             attr_info_ex(AttributeInfoEx) extended attribute information
-                info = AttributeInfoEx()
-                info.data_format = tango.AttrDataFormat.IMAGE
-                info.data_type = tango.AttrDataFormat.IMAGE
-                info.writable = False
-                self.set_attribute_config(info)
-                self.logger.debug('Attribute %s initialized', conf['local_name'])
 
 
 
@@ -181,18 +166,20 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                 if conf['ready']:
                     if conf['attribute'] is None:
                         # create local attribute
-                        attr = tango.Attr(conf['local_name'], [[float], [float]], tango.AttrWriteType.READ)
-                        self.add_attribute(attr, self.read_attribute)
-                        conf['attribute'] = attr
-                        # set local attr info according to the remote one
-                        info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])
-                        #             attr_info_ex(AttributeInfoEx) extended attribute information
-                        info = AttributeInfoEx()
-                        info.data_format = tango.AttrDataFormat.IMAGE
-                        info.data_type = tango.AttrDataFormat.IMAGE
-                        info.writable = False
-                        self.set_attribute_config(info)
-                        self.logger.debug('Attribute %s initialized', conf['local_name'])
+                        if conf['attribute'] is None:
+                            # create local attribute
+                            attr = tango.Attr(conf['local_name'], [[float], [float]], tango.AttrWriteType.READ)
+                            self.add_attribute(attr, self.read_attribute)
+                            conf['attribute'] = attr
+                            # set local attr info according to the remote one
+                            info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])
+                            #             attr_info_ex(AttributeInfoEx) extended attribute information
+                            info = AttributeInfoEx()
+                            info.data_format = tango.AttrDataFormat.IMAGE
+                            info.data_type = tango.AttrDataFormat.IMAGE
+                            info.writable = False
+                            self.set_attribute_config(info)
+                            self.logger.debug('Attribute %s initialized', conf['local_name'])
                     n += 1
             except:
                 self.log_exception('Attribute %s initialization failure' % name)
@@ -204,7 +191,10 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
     def read_attribute(self, attr: tango.Attribute):
         name = attr.get_name()
         try:
-            remote_name = name.replace('_', '/')
+            remote_name = None
+            for nm in self.attributes:
+                if nm['local_name'] == name:
+                    remote_name = nm
             conf = self.attributes[remote_name]
             if not conf['ready']:
                 # reconnect to attribute
