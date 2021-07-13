@@ -95,11 +95,12 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
     def configure_attribute(self, name, param=None):
         if param is None:
             param = {}
+        local_name = name.replace('/', '_')
         # check if attribute exists
-        if name in self.attributes:
+        if local_name in self.attributes:
             self.logger.debug('Attribute for %s exists', name)
-            return self.attributes[name]
-        conf = {'ready': False, 'attribute': None, 'local_name': name.replace('/', '_'),
+            return self.attributes[local_name]
+        conf = {'ready': False, 'attribute': None, 'local_name': local_name,
                 'device_proxy': None, 'period': -1}
         try:
             d_n, a_n = TangoAttributeHistoryServer.split_attribute_name(name)
@@ -195,6 +196,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             for nm in self.attributes:
                 if nm['local_name'] == name:
                     remote_name = nm
+                    break
             conf = self.attributes[remote_name]
             if not conf['ready']:
                 # reconnect to attribute
