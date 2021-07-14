@@ -141,6 +141,9 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                 self.logger.warning('Polling can not be enabled for %s', name)
                 return conf
             self.logger.debug('Polling has been restarted for %s', name)
+            # get polling depth
+            depth = d_p.get_attr_poll_ring_depth(a_n)
+            conf['depth'] = depth
             # create local attribute
             if conf['attribute'] is None:
                 # create local attribute
@@ -159,8 +162,6 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
 
 
 
-            depth = d_p.get_attr_poll_ring_depth(a_n)
-            conf['depth'] = depth
             if 'delta_t' in param:
                 n = int(param['delta_t'] * 1000.0 / period)
             else:
