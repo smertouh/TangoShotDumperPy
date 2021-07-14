@@ -162,7 +162,8 @@ class TangoServerPrototype(Device):
     def split_attribute_name(name):
         split = name.split('/')
         a_n = split[-1]
-        d_n = name.replace('/' + a_n, '')
+        m = -1 - len(a_n)
+        d_n = name[:m]
         return d_n, a_n
 
 
