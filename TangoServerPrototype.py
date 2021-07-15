@@ -206,11 +206,14 @@ class Configuration:
         return key in self.data
 
     def read(self, file_name):
-        # Read config from file
-        with open(file_name, 'r') as configfile:
-            self.data = json.loads(configfile.read())
-            self.__setitem__('file_name', file_name)
-        return True
+        try:
+            # Read config from file
+            with open(file_name, 'r') as configfile:
+                self.data = json.loads(configfile.read())
+                self.__setitem__('file_name', file_name)
+            return True
+        except:
+            return False
 
     def write(self, file_name=None):
         if file_name is None:
