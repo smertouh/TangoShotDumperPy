@@ -107,7 +107,10 @@ class TangoServerPrototype(Device):
     def properties(self, filter: str = '*'):
         # returns dictionary with device properties
         names = self.device_proxy.get_property_list(filter)
-        return self.device_proxy.get_property(names)
+        if len(names) > 0:
+            return self.device_proxy.get_property(names)
+        else:
+            return {}
 
     def set_config(self):
         try:

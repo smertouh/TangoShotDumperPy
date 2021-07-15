@@ -99,7 +99,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             return False
 
     def configure_attribute(self, name, param=None):
-        local_name = name.replace('/', '!')
+        local_name = name.replace('/', '.')
         # check if attribute exists
         if local_name in self.attributes:
             self.logger.debug('Attribute exists for %s', name)
