@@ -93,15 +93,16 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             return False
 
     def configure_attribute(self, name, param=None):
-        if param is None:
-            param = {}
         local_name = name.replace('/', '_')
         # check if attribute exists
         if local_name in self.attributes:
-            self.logger.debug('Attribute for %s exists', name)
+            self.logger.debug('Attribute exists for %s', name)
             return self.attributes[local_name]
         conf = {'ready': False, 'attribute': None, 'local_name': local_name,
-                'device_proxy': None, 'period': -1}
+                'device_proxy': None, 'period': -1, 'name': name}
+        if param is not None:
+            for p in param:
+                conf[p] = param[p]
         try:
             d_n, a_n = TangoAttributeHistoryServer.split_attribute_name(name)
             conf['device_name'] = d_n
@@ -109,22 +110,26 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             # create device proxy
             if d_n in TangoAttributeHistoryServer.tango_devices:
                 d_p = TangoAttributeHistoryServer.tango_devices[d_n]
+                self.logger.debug('Proxy exists for %s', name)
             else:
                 d_p = tango.DeviceProxy(d_n)
                 d_p.ready = False
                 TangoAttributeHistoryServer.tango_devices[d_n] = d_p
+                self.logger.debug('Proxy has been created for %s', name)
             # check if device is on
             if not d_p.ready:
                 try:
-                    d_p.ping()
+                    ping = d_p.ping()
                     d_p.ready = True
+                    self.logger.debug('Ping for %s is %s s', name, ping)
                 except:
                     d_p.ready = False
+                    self.logger.debug('No ping for %s', name)
             conf['device_proxy'] = d_p
             if not d_p.ready:
-                self.logger.debug('Device is off for %s', name)
+                self.logger.debug('Device is not ready for %s', name)
                 return conf
-            self.logger.debug('Device for %s detected', name)
+            self.logger.debug('Device is ready for %s', name)
             # check if remote attribute exists
             try:
                 result = d_p.read_attribute(a_n)
@@ -142,13 +147,11 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                 self.logger.warning('Polling can not be enabled for %s', name)
                 return conf
             self.logger.debug('Polling has been restarted for %s', name)
-
-
-
             depth = d_p.get_attr_poll_ring_depth(a_n)
             conf['depth'] = depth
-            if 'delta_t' in param:
-                n = int(param['delta_t'] * 1000.0 / period)
+            self.logger.warning('Polling depth for %s is %s', name, depth)
+            if 'delta_t' in conf:
+                n = int(conf['delta_t'] * 1000.0 / period)
             else:
                 n = int(depth)
             if n > depth:
@@ -167,20 +170,17 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                 if conf['ready']:
                     if conf['attribute'] is None:
                         # create local attribute
-                        if conf['attribute'] is None:
-                            # create local attribute
-                            attr = tango.Attr(conf['local_name'], [[float], [float]], tango.AttrWriteType.READ)
-                            self.add_attribute(attr, self.read_attribute)
-                            conf['attribute'] = attr
-                            # set local attr info according to the remote one
-                            info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])
-                            #             attr_info_ex(AttributeInfoEx) extended attribute information
-                            info = AttributeInfoEx()
-                            info.data_format = tango.AttrDataFormat.IMAGE
-                            info.data_type = tango.AttrDataFormat.IMAGE
-                            info.writable = False
-                            self.set_attribute_config(info)
-                            self.logger.debug('Attribute %s initialized', conf['local_name'])
+                        attr = tango.Attr(conf['local_name'], [[float], [float]], tango.AttrWriteType.READ)
+                        self.add_attribute(attr, self.read_attribute)
+                        conf['attribute'] = attr
+                        # set local attr info according to the remote one
+                        info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])
+                        #info = AttributeInfoEx()
+                        info.data_format = tango.AttrDataFormat.IMAGE
+                        info.data_type = tango.AttrDataFormat.IMAGE
+                        info.writable = False
+                        self.set_attribute_config(info)
+                        self.logger.debug('Attribute %s initialized', name)
                     n += 1
             except:
                 self.log_exception('Attribute %s initialization failure' % name)
