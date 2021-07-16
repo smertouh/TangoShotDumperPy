@@ -34,9 +34,9 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
     #                       unit="s", format="%d",
     #                       doc="Shot time")
 
-    @command(dtype_in=str, dtype_out=[[float]])
+    @command(dtype_in=str, dtype_out=str)
     def read_history(self, name):
-        return read_attribute_history(name)
+        return str(read_attribute_history(name))
 
     def init_device(self):
         # set default properties
@@ -227,11 +227,13 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             for i, d in enumerate(data):
                 history[i, 1] = d.value * scale
                 history[i, 0] = d.time.totime()
+            attr.set_value(history)
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
             self.logger.debug('Reading OK')
-            return 1.0
+            return history
         except:
-            self.log_exception('Error reading %s', name)
+            self.log_exception('Error reading %s' % name)
+            attr.set_value(EMPTY_HISTORY)
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
             return EMPTY_HISTORY
 
@@ -247,7 +249,7 @@ def post_init_callback():
                         info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
                         # # info = AttributeInfoEx()
                         # create local attribute
-                        attr = tango.server.attribute(name=conf['local_name'], dtype=[[float]],
+                        attr = tango.server.attribute(name=conf['local_name'], dtype=numpy.float,
                                                       dformat=tango.AttrDataFormat.IMAGE,
                                                       max_dim_y=2, max_dim_x=conf['depth'],
                                                       fread=dev.read_attribute,
