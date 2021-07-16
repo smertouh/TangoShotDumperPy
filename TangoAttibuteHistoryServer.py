@@ -25,18 +25,31 @@ SERVER_CONFIG = ('log_level', 'config_file')
 
 
 class TangoAttributeHistoryServer(TangoServerPrototype):
-    version = '0.0'
+    server_version = '1.0'
     tango_devices = {}
 
-    # shot_time = attribute(label="shot_time", dtype=float,
-    #                       display_level=DispLevel.OPERATOR,
-    #                       access=AttrWriteType.READ,
-    #                       unit="s", format="%d",
-    #                       doc="Shot time")
+    version = attribute(label="version", dtype=str,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="", format="%s",
+                        doc="Server version")
+
+    log_level = attribute(label="log_level", dtype=str,
+                          display_level=DispLevel.OPERATOR,
+                          access=AttrWriteType.READ_WRITE,
+                          unit="", format="%7s",
+                          doc="Log level")
 
     @command(dtype_in=str, dtype_out=str)
     def read_history(self, name):
         return str(read_attribute_history(name))
+
+    @command(dtype_in=int)
+    def set_log_level(self, level):
+        self.logger.setLevel(level)
+        msg = '%s Log level set to %d' % (self.get_name(), level)
+        self.logger.info(msg)
+        self.info_stream(msg)
 
     def init_device(self):
         # set default properties
@@ -50,13 +63,6 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             # read config from device properties
             level = self.get_device_property('log_level', logging.DEBUG)
             self.logger.setLevel(level)
-            # read config from file and set config
-            config_file = self.get_device_property('config_file', 'TangoAttributeHistoryServer.json')
-            self.config = Configuration(config_file)
-            self.set_server_config()
-            # # read and set shot time
-            # t = self.get_device_property('shot_time', 0.0)
-            # self.write_shot_time(t)
             # configure remote attributes
             self.attributes = {}
             properties = self.properties()
@@ -74,29 +80,26 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             if self in TangoAttributeHistoryServer.device_list:
                 TangoAttributeHistoryServer.device_list.remove(self)
             TangoAttributeHistoryServer.device_list.append(self)
-            self.logger.info('Device %s added with %s attributes', self.get_name(), len(self.attributes))
+            self.logger.info('Device %s was initiated with %s attributes', self.get_name(), len(self.attributes))
             self.set_state(DevState.STANDBY)
         except:
             self.log_exception()
             self.set_state(DevState.FAULT)
 
-    # def read_shot_time(self):
-    #     return self.shot_time_value
-    #
-    # def write_shot_time(self, value):
-    #     self.set_device_property('shot_time', str(value))
-    #     self.shot_time_value = value
+    def read_version(self):
+        return self.server_version
 
-    def set_server_config(self):
+    def read_log_level(self):
+        return logging.getLevelName(self.logger.getEffectiveLevel())
+
+    def write_log_level(self, value):
         try:
-            # log level
-            self.logger.setLevel(self.config.get('log_level', logging.DEBUG))
-            self.logger.debug("Log level set to %s" % self.logger.level)
-            self.logger.debug('Configuration restored from %s' % self.config.get('file_name'))
-            return True
+            self.logger.setLevel(int(value))
         except:
-            self.log_exception('Configuration set error')
-            return False
+            try:
+                self.logger.setLevel(value.upper())
+            except:
+                pass
 
     def configure_attribute(self, name, param=None):
         local_name = name.replace('/', '.')
@@ -133,14 +136,14 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                     self.logger.debug('No ping for %s', name)
             conf['device_proxy'] = d_p
             if not d_p.ready:
-                self.logger.debug('Device is not ready for %s', name)
+                self.logger.warning('Device is not ready for %s', name)
                 return conf
-            self.logger.debug('Device is ready for %s', name)
+            # self.logger.debug('Device is ready for %s', name)
             # check if remote attribute exists
             try:
                 result = d_p.read_attribute(a_n)
             except:
-                self.logger.debug('Attribute %s is not readable', name)
+                self.logger.warning('Attribute %s is not readable', name)
                 return conf
             # check if remote attribute is polled
             period = d_p.get_attribute_poll_period(a_n)
@@ -152,20 +155,21 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             if period <= 0:
                 self.logger.warning('Polling can not be enabled for %s', name)
                 return conf
-            self.logger.debug('Polling has been restarted for %s', name)
+            # self.logger.debug('Polling has been restarted for %s', name)
             p_s = self.convert_polling_status(d_p.polling_status(), a_n)
             depth = p_s['depth']
             conf['depth'] = depth
-            self.logger.warning('Polling depth for %s is %s', name, depth)
+            self.logger.debug('Polling depth for %s is %s', name, depth)
             if 'delta_t' in conf:
                 n = int(conf['delta_t'] * 1000.0 / period)
             else:
                 n = int(depth)
             if n > depth:
-                self.logger.warning('Polling depth is only %s s for %s', depth * period / 1000.0, name)
+                self.logger.warning('Not enough polling depth %s s for %s', depth * period / 1000.0, name)
             conf['ready'] = True
+            # self.logger.info('Attribute for %s has been configured', name)
         except:
-            self.log_exception('Attribute config exception')
+            self.log_exception('Attribute config exception for %s' % name)
             conf['ready'] = False
         return conf
 
@@ -210,8 +214,9 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                 conf = self.configure_attribute(remote_name)
             if not conf['ready']:
                 msg = 'Cannot reconnect %s' % name
-                self.logger.debug(msg)
+                self.logger.warning(msg)
                 self.debug_stream(msg)
+                attr.set_value(EMPTY_HISTORY)
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
                 return EMPTY_HISTORY
             d_p = conf['device_proxy']
@@ -229,7 +234,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                 history[i, 0] = d.time.totime()
             attr.set_value(history)
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            self.logger.debug('Reading OK')
+            # self.logger.debug('Reading OK')
             return history
         except:
             self.log_exception('Error reading %s' % name)
@@ -247,26 +252,29 @@ def post_init_callback():
                     if conf['attribute'] is None:
                         # get remote attr info
                         info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
-                        # # info = AttributeInfoEx()
                         # create local attribute
+                        local_label = conf.get('label', info.label + '_history')
+                        local_unit = conf.get('unit', info.unit)
+                        local_format = conf.get('format', info.format)
+                        local_display_unit = conf.get('display_unit', '')
                         attr = tango.server.attribute(name=conf['local_name'], dtype=numpy.float,
                                                       dformat=tango.AttrDataFormat.IMAGE,
-                                                      max_dim_y=2, max_dim_x=conf['depth'],
+                                                      max_dim_x=2, max_dim_y=conf['depth'],
                                                       fread=dev.read_attribute,
-                                                      label=info.label + '_history',
+                                                      label=local_label,
                                                       doc='history of ' + info.label,
-                                                      unit=info.unit,
-                                                      display_unit=info.display_unit,
-                                                      format=info.format,
+                                                      unit=local_unit,
+                                                      display_unit=local_display_unit,
+                                                      format=local_format,
                                                       min_value=info.min_value,
                                                       max_value=info.max_value)
-                        # attr = tango.Attr(conf['local_name'], tango.DevDouble, tango.AttrWriteType.READ)
                         # add attr to device
                         dev.add_attribute(attr)
                         conf['attribute'] = attr
+                        dev.logger.info('History attribute for %s has been created', conf['name'])
                     dev.set_state(DevState.RUNNING)
             except:
-                dev.log_exception('Initialize Error %s' % dev)
+                dev.log_exception('Initialize Error %s %s' % (dev, attr_n))
 
 
 def read_attribute_history(name, delta_t=None):
@@ -300,9 +308,14 @@ def read_attribute_history(name, delta_t=None):
         a = 'period'
         conf[a] = p_s[a]
         data = d_p.attribute_history(a_n, n)
+        info = d_p.get_attribute_config_ex(a_n)[0]
+        try:
+            scale = float(info.display_unit)
+        except:
+            scale = 1.0
         history = numpy.zeros((n, 2))
         for i, d in enumerate(data):
-            history[i, 1] = d.value
+            history[i, 1] = d.value * scale
             history[i, 0] = d.time.totime()
         conf['ready'] = True
     except:
