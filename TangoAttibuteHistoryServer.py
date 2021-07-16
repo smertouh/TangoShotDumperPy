@@ -34,9 +34,9 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
     #                       unit="s", format="%d",
     #                       doc="Shot time")
 
-    @command(dtype_in=str, dtype_out=str)
+    @command(dtype_in=str, dtype_out=[[float]])
     def read_history(self, name):
-        return str(read_attribute_history(name))
+        return read_attribute_history(name)
 
     def init_device(self):
         # set default properties
@@ -218,9 +218,14 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             a_n = conf['attribute_name']
             n = conf['depth']
             data = d_p.attribute_history(a_n, n)
+            info = d_p.get_attribute_config_ex(a_n)[0]
+            try:
+                scale = float(info.display_unit)
+            except:
+                scale = 1.0
             history = numpy.zeros((n, 2))
             for i, d in enumerate(data):
-                history[i, 1] = d.value
+                history[i, 1] = d.value * scale
                 history[i, 0] = d.time.totime()
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
             self.logger.debug('Reading OK')
@@ -238,20 +243,24 @@ def post_init_callback():
                 conf = dev.attributes[attr_n]
                 if conf['ready']:
                     if conf['attribute'] is None:
+                        # get remote attr info
                         info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
-                        # info = AttributeInfoEx()
+                        # # info = AttributeInfoEx()
                         # create local attribute
-                        # attr = tango.Attr(conf['local_name'], [[float], [float]], tango.AttrWriteType.READ)
-                        attr = tango.Attr(conf['local_name'], tango.DevDouble, tango.AttrWriteType.READ)
-                        dev.add_attribute(attr, r_meth=dev.read_attribute)
-                        d_p = dev.device_proxy
-                        info1 = d_p.get_attribute_config_ex(conf['local_name'])[0]
-                        # info1.data_format = tango.AttrDataFormat.IMAGE
-                        info1.label = info.label + '_history'
-                        # info1.max_dim_x = 2
-                        # info1.max_dim_y = conf['depth']
-                        info1.data_type = info.data_type
-                        d_p.set_attribute_config(info1)
+                        attr = tango.server.attribute(name=conf['local_name'], dtype=[[float]],
+                                                      dformat=tango.AttrDataFormat.IMAGE,
+                                                      max_dim_y=2, max_dim_x=conf['depth'],
+                                                      fread=dev.read_attribute,
+                                                      label=info.label + '_history',
+                                                      doc='history of ' + info.label,
+                                                      unit=info.unit,
+                                                      display_unit=info.display_unit,
+                                                      format=info.format,
+                                                      min_value=info.min_value,
+                                                      max_value=info.max_value)
+                        # attr = tango.Attr(conf['local_name'], tango.DevDouble, tango.AttrWriteType.READ)
+                        # add attr to device
+                        dev.add_attribute(attr)
                         conf['attribute'] = attr
                     dev.set_state(DevState.RUNNING)
             except:
