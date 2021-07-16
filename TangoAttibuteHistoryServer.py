@@ -146,12 +146,13 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                 self.logger.warning('Attribute %s is not readable', name)
                 return conf
             # check if remote attribute is polled
-            period = d_p.get_attribute_poll_period(a_n)
-            conf['period'] = period
-            if not d_p.is_attribute_polled(a_n):
-                d_p.poll_attribute(a_n, period)
+            if 'period' in conf:
+                period = conf['period']
+            else:
                 period = d_p.get_attribute_poll_period(a_n)
-            conf['period'] = period
+                conf['period'] = period
+            d_p.poll_attribute(a_n, period)
+            period = d_p.get_attribute_poll_period(a_n)
             if period <= 0:
                 self.logger.warning('Polling can not be enabled for %s', name)
                 return conf
