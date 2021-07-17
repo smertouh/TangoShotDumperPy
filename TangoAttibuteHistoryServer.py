@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Shot dumper tango device server
-A. L. Sanin, started 05.07.2021
+Attribute history tango device server
+A. L. Sanin, started 05.08.2021
 """
 import datetime
 import logging
@@ -27,18 +27,6 @@ SERVER_CONFIG = ('log_level', 'config_file')
 class TangoAttributeHistoryServer(TangoServerPrototype):
     server_version = '1.0'
     tango_devices = {}
-
-    version = attribute(label="version", dtype=str,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ,
-                        unit="", format="%s",
-                        doc="Server version")
-
-    log_level = attribute(label="log_level", dtype=str,
-                          display_level=DispLevel.OPERATOR,
-                          access=AttrWriteType.READ_WRITE,
-                          unit="", format="%7s",
-                          doc="Log level")
 
     @command(dtype_in=str, dtype_out=str)
     def read_history(self, name):
@@ -86,21 +74,6 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             self.log_exception()
             self.set_state(DevState.FAULT)
 
-    def read_version(self):
-        return self.server_version
-
-    def read_log_level(self):
-        return logging.getLevelName(self.logger.getEffectiveLevel())
-
-    def write_log_level(self, value):
-        try:
-            self.logger.setLevel(int(value))
-        except:
-            try:
-                self.logger.setLevel(value.upper())
-            except:
-                pass
-
     def configure_attribute(self, name, param=None):
         local_name = name.replace('/', '.')
         # check if attribute exists
@@ -108,7 +81,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             self.logger.debug('Attribute exists for %s', name)
             return self.attributes[local_name]
         conf = {'ready': False, 'attribute': None, 'local_name': local_name,
-                'device_proxy': None, 'period': -1, 'name': name}
+                'device_proxy': None, 'name': name}
         if param is not None:
             for p in param:
                 conf[p] = param[p]

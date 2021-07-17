@@ -16,14 +16,20 @@ from tango.server import Device, attribute, command, pipe, device_property
 
 
 class TangoServerPrototype(Device):
-    version = '0.0'
+    server_version = '0.0'
     device_list = []
 
-    # shot_number = attribute(label="shot_number", dtype=int,
-    #                         display_level=DispLevel.OPERATOR,
-    #                         access=AttrWriteType.READ,
-    #                         unit="", format="%d",
-    #                         doc="Shot number")
+    version = attribute(label="version", dtype=str,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="", format="%s",
+                        doc="Server version")
+
+    log_level = attribute(label="log_level", dtype=str,
+                          display_level=DispLevel.OPERATOR,
+                          access=AttrWriteType.READ_WRITE,
+                          unit="", format="%7s",
+                          doc="Log level")
 
     @command(dtype_in=int)
     def set_log_level(self, level):
@@ -31,6 +37,21 @@ class TangoServerPrototype(Device):
         msg = '%s Log level set to %d' % (self.get_name(), level)
         self.logger.info(msg)
         self.info_stream(msg)
+
+    def read_version(self):
+        return self.server_version
+
+    def read_log_level(self):
+        return logging.getLevelName(self.logger.getEffectiveLevel())
+
+    def write_log_level(self, value):
+        try:
+            self.logger.setLevel(int(value))
+        except:
+            try:
+                self.logger.setLevel(value.upper())
+            except:
+                pass
 
     def init_device(self):
         # set default properties
@@ -67,13 +88,6 @@ class TangoServerPrototype(Device):
         self.logger.log(level, message)
         self.error_stream(message)
         self.logger.debug('', exc_info=True)
-
-    # def read_shot_number(self):
-    #     return self.shot_number_value
-    #
-    # def write_shot_number(self, value):
-    #     self.set_device_property('shot_number', str(value))
-    #     self.shot_number_value = value
 
     def get_device_property(self, prop: str, default=None):
         try:
