@@ -114,7 +114,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             # self.logger.debug('Device is ready for %s', name)
             # check if remote attribute exists
             try:
-                result = d_p.read_attribute(a_n)
+                d_p.read_attribute(a_n)
             except:
                 self.logger.warning('Attribute %s is not readable', name)
                 return conf
@@ -124,9 +124,13 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             else:
                 period = d_p.get_attribute_poll_period(a_n)
                 conf['period'] = period
+            if period <= 5:
+                self.logger.warning('Polling can not be enabled for %s', name)
+                conf.pop('period', None)
+                return conf
             d_p.poll_attribute(a_n, period)
             period = d_p.get_attribute_poll_period(a_n)
-            if period <= 0:
+            if period <= 5:
                 self.logger.warning('Polling can not be enabled for %s', name)
                 return conf
             # self.logger.debug('Polling has been restarted for %s', name)
@@ -147,32 +151,33 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             conf['ready'] = False
         return conf
 
-    def initialize(self):
-        n = 0
-        for name in self.attributes:
-            try:
-                conf = self.attributes[name]
-                if conf['ready']:
-                    if conf['attribute'] is None:
-                        # create local attribute
-                        attr = tango.Attr(conf['local_name'], [[float], [float]], tango.AttrWriteType.READ)
-                        self.add_attribute(attr, self.read_attribute)
-                        conf['attribute'] = attr
-                        # set local attr info according to the remote one
-                        info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])
-                        # info = AttributeInfoEx()
-                        info.data_format = tango.AttrDataFormat.IMAGE
-                        info.data_type = tango.AttrDataFormat.IMAGE
-                        info.writable = False
-                        self.set_attribute_config(info)
-                        self.logger.debug('Attribute %s initialized', name)
-                    n += 1
-            except:
-                self.log_exception('Attribute %s initialization failure' % name)
-        if n > 0:
-            self.set_state(DevState.RUNNING)
-        else:
-            self.set_state(DevState.STANDBY)
+    def create_attribute(self, name):
+        conf = self.attributes[name]
+        if not conf['ready']:
+            pass
+        if conf['attribute'] is None:
+            # get remote attr info
+            info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
+            # create local attribute
+            local_label = conf.get('label', info.label + '_history')
+            local_unit = conf.get('unit', info.unit)
+            local_format = conf.get('format', info.format)
+            local_display_unit = conf.get('display_unit', '')
+            attr = tango.server.attribute(name=conf['local_name'], dtype=numpy.float,
+                                          dformat=tango.AttrDataFormat.IMAGE,
+                                          max_dim_x=2, max_dim_y=conf['depth'],
+                                          fread=self.read_attribute,
+                                          label=local_label,
+                                          doc='history of ' + info.label,
+                                          unit=local_unit,
+                                          display_unit=local_display_unit,
+                                          format=local_format,
+                                          min_value=info.min_value,
+                                          max_value=info.max_value)
+            # add attr to device
+            self.add_attribute(attr)
+            conf['attribute'] = attr
+            self.logger.info('History attribute for %s has been created', conf['name'])
 
     def read_attribute(self, attr: tango.Attribute):
         name = attr.get_name()
@@ -246,9 +251,10 @@ def post_init_callback():
                         dev.add_attribute(attr)
                         conf['attribute'] = attr
                         dev.logger.info('History attribute for %s has been created', conf['name'])
-                    dev.set_state(DevState.RUNNING)
+                dev.set_state(DevState.RUNNING)
             except:
                 dev.log_exception('Initialize Error %s %s' % (dev, attr_n))
+                dev.set_state(DevState.FAULT)
 
 
 def read_attribute_history(name, delta_t=None):
