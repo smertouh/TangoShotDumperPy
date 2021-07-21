@@ -40,17 +40,9 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
         self.info_stream(msg)
 
     def init_device(self):
-        # set default properties
-        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
-        self.device_proxy = tango.DeviceProxy(self.get_name())
-        self.shot_time_value = 0.0
-        self.config = Configuration()
-        # configure device
         try:
+            super().init_device()
             self.set_state(DevState.INIT)
-            # read config from device properties
-            level = self.get_device_property('log_level', logging.DEBUG)
-            self.logger.setLevel(level)
             # configure remote attributes
             self.attributes = {}
             properties = self.properties()
@@ -154,7 +146,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
     def create_attribute(self, name):
         conf = self.attributes[name]
         if not conf['ready']:
-            pass
+            return False
         if conf['attribute'] is None:
             # get remote attr info
             info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
@@ -177,7 +169,8 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             # add attr to device
             self.add_attribute(attr)
             conf['attribute'] = attr
-            self.logger.info('History attribute for %s has been created', conf['name'])
+            self.logger.debug('History attribute for %s has been created', conf['name'])
+            return True
 
     def read_attribute(self, attr: tango.Attribute):
         name = attr.get_name()
@@ -220,6 +213,36 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             attr.set_value(EMPTY_HISTORY)
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
             return EMPTY_HISTORY
+
+    def create_all_attributes(self):
+        n = 0
+        for name in self.attributes:
+            try:
+                conf = self.attributes[name]
+                if not conf['ready']:
+                    return False
+                if conf['attribute'] is None:
+                    if self.create_attribute(name):
+                        n += 1
+            except:
+                self.log_exception('Attribute %s creation error for %s' % (name, self))
+        if n > 0:
+            self.set_state(DevState.RUNNING)
+            return True
+        else:
+            self.logger.warning('No attribute has been created')
+            self.set_state(DevState.FAULT)
+            return False
+
+    def remove_all_attributes(self):
+        for name in self.attributes:
+            try:
+                conf = self.attributes[name]
+                if conf['attribute'] is not None:
+                    self.remove_attribute(conf['attribute'])
+                    conf['attribute'] = None
+            except:
+                self.log_exception('Attribute %s can not be removed' % name)
 
 
 def post_init_callback():

@@ -54,30 +54,28 @@ class TangoServerPrototype(Device):
                 pass
 
     def init_device(self):
+        # default logger
+        self.logger = self.config_logger()
+        self.set_state(DevState.INIT)
         # set default properties
-        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
-        self.device_proxy = tango.DeviceProxy(self.get_name())
-        self.shot_number_value = 0
         self.config = Configuration()
-        # configure device
-        try:
-            self.set_state(DevState.INIT)
-            # read config from device properties
-            level = self.get_device_property('log_level', logging.DEBUG)
-            self.logger.setLevel(level)
-            # read config from file
-            config_file = self.get_device_property('config_file', 'TangoAttributeHistoryServer.json')
-            self.config = Configuration(config_file)
-            self.set_config()
-            # read shot number
-            n = self.get_device_property('shot_number', 0)
-            self.write_shot_number(n)
-            if self not in TangoServerPrototype.device_list:
-                TangoServerPrototype.device_list.append(self)
-            self.logger.info('Device %s added', self.get_name())
-        except:
-            self.log_exception()
-            self.set_state(DevState.FAULT)
+        self.device_proxy = tango.DeviceProxy(self.get_name())
+        # config from file
+        self.read_config_from_file()
+        # config from properties
+        self.read_config_from_properties()
+        # add self to device list
+        if self in TangoServerPrototype.device_list:
+            TangoServerPrototype.device_list.remove(self)
+        TangoServerPrototype.device_list.append(self)
+        self.logger.info('Device %s added', self.get_name())
+        #
+        self.set_state(DevState.RUNNING)
+
+    def read_config_from_file(self, default='TangoAttributeHistoryServer.json'):
+        config_file = self.get_device_property('config_file', default)
+        self.config = Configuration(config_file)
+        self.set_config()
 
     def log_exception(self, message=None, level=logging.ERROR):
         ex_type, ex_value, traceback = sys.exc_info()
@@ -91,7 +89,6 @@ class TangoServerPrototype(Device):
 
     def get_device_property(self, prop: str, default=None):
         try:
-            # self.assert_proxy()
             pr = self.device_proxy.get_property(prop)[prop]
             result = None
             if len(pr) > 0:
@@ -99,13 +96,11 @@ class TangoServerPrototype(Device):
             if default is None:
                 return result
             if result is None or result == '':
-                result = default
+                return default
             else:
-                result = type(default)(result)
+                return type(default)(result)
         except:
-            # self.logger.debug('Error reading property %s for %s', prop, self.name)
-            result = default
-        return result
+            return default
 
     def set_device_property(self, prop: str, value: str):
         try:
@@ -152,6 +147,12 @@ class TangoServerPrototype(Device):
             console_handler.setFormatter(log_formatter)
             logger.addHandler(console_handler)
         return logger
+
+    def read_config_from_properties(self):
+        level = self.get_device_property('log_level', self.logger.getEffectiveLevel())
+        self.logger.setLevel(level)
+        self.logger.debug('Log level has been set to %s', logging.getLevelName(level))
+        return self.logger
 
     @staticmethod
     def convert_polling_status(p_s, name):
