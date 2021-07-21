@@ -64,11 +64,6 @@ class TangoServerPrototype(Device):
         self.read_config_from_file()
         # config from properties
         self.read_config_from_properties()
-        # add self to device list
-        if self in TangoServerPrototype.device_list:
-            TangoServerPrototype.device_list.remove(self)
-        TangoServerPrototype.device_list.append(self)
-        self.logger.debug('Device %s has been added', self.get_name())
         #
         self.set_state(DevState.RUNNING)
 

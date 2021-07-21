@@ -22,11 +22,14 @@ from TangoServerPrototype import TangoServerPrototype, Configuration
 
 EMPTY_HISTORY = numpy.empty((0, 2))
 SERVER_CONFIG = ('log_level', 'config_file')
+DEFAULT_ATTRIB_CONFIG = {'ready': False, 'attribute': None, 'device_proxy': None,
+                         'local_name': None, 'name': None}
 
 
 class TangoAttributeHistoryServer(TangoServerPrototype):
     server_version = '1.0'
     tango_devices = {}
+    logger = TangoServerPrototype.config_logger()
 
     @command(dtype_in=str, dtype_out=str)
     def read_history(self, name):
@@ -121,8 +124,9 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
         if local_name in self.attributes:
             self.logger.debug('Attribute exists for %s', name)
             return self.attributes[local_name]
-        conf = {'ready': False, 'attribute': None, 'local_name': local_name,
-                'device_proxy': None, 'name': name}
+        conf = DEFAULT_ATTRIB_CONFIG
+        conf['local_name'] = local_name
+        conf['name'] = name
         if param is not None:
             for p in param:
                 conf[p] = param[p]
@@ -221,6 +225,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
         return True
 
     def create_all_attributes(self):
+        self.logger.debug('entry')
         n = 0
         m = 0
         for name in self.attributes:
@@ -254,7 +259,9 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
 
 
 def post_init_callback():
+    TangoAttributeHistoryServer.logger.debug('entry')
     for dev in TangoAttributeHistoryServer.device_list:
+        TangoAttributeHistoryServer.logger.debug('loop %s', dev)
         dev.create_all_attributes()
         # for attr_n in dev.attributes:
         #     try:
@@ -287,6 +294,7 @@ def post_init_callback():
         # except:
         #     dev.log_exception('Initialize Error %s %s' % (dev, attr_n))
         #     dev.set_state(DevState.FAULT)
+    TangoAttributeHistoryServer.logger.debug('exit')
 
 
 def read_attribute_history(name, delta_t=None):
