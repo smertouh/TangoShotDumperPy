@@ -41,6 +41,8 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
 
     def init_device(self):
         try:
+            if self in TangoAttributeHistoryServer.device_list:
+                self.delete_device()
             super().init_device()
             self.set_state(DevState.INIT)
             # configure remote attributes
@@ -57,14 +59,61 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                         self.attributes[prop] = self.configure_attribute(prop, params)
                     except:
                         self.log_exception('Attribute %s config error' % prop)
-            if self in TangoAttributeHistoryServer.device_list:
-                TangoAttributeHistoryServer.device_list.remove(self)
+            self.config['attributes'] = self.attributes
             TangoAttributeHistoryServer.device_list.append(self)
-            self.logger.info('Device %s was initiated with %s attributes', self.get_name(), len(self.attributes))
+            self.logger.info('Device %s has been initiated with %s attributes', self.get_name(), len(self.attributes))
             self.set_state(DevState.STANDBY)
         except:
             self.log_exception()
             self.set_state(DevState.FAULT)
+
+    def delete_device(self):
+        self.remove_all_attributes()
+        if self in TangoAttributeHistoryServer.device_list:
+            TangoAttributeHistoryServer.device_list.remove(self)
+            self.logger.info('Device %s deleted', self.get_name())
+
+    def read_attribute(self, attr: tango.Attribute):
+        name = attr.get_name()
+        try:
+            remote_name = None
+            for nm in self.attributes:
+                if self.attributes[nm]['local_name'] == name:
+                    remote_name = nm
+                    break
+            conf = self.attributes[remote_name]
+            if not conf['ready']:
+                # reconnect to attribute
+                conf = self.configure_attribute(remote_name)
+            if not conf['ready']:
+                msg = 'Cannot reconnect %s' % name
+                self.logger.warning(msg)
+                self.debug_stream(msg)
+                attr.set_value(EMPTY_HISTORY)
+                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                return EMPTY_HISTORY
+            d_p = conf['device_proxy']
+            a_n = conf['attribute_name']
+            n = conf['depth']
+            data = d_p.attribute_history(a_n, n)
+            info = d_p.get_attribute_config_ex(a_n)[0]
+            try:
+                scale = float(info.display_unit)
+            except:
+                scale = 1.0
+            history = numpy.zeros((n, 2))
+            for i, d in enumerate(data):
+                history[i, 1] = d.value * scale
+                history[i, 0] = d.time.totime()
+            attr.set_value(history)
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            # self.logger.debug('Reading OK')
+            return history
+        except:
+            self.log_exception('Error reading %s' % name)
+            attr.set_value(EMPTY_HISTORY)
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            return EMPTY_HISTORY
 
     def configure_attribute(self, name, param=None):
         local_name = name.replace('/', '.')
@@ -147,91 +196,51 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
         conf = self.attributes[name]
         if not conf['ready']:
             return False
-        if conf['attribute'] is None:
-            # get remote attr info
-            info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
-            # create local attribute
-            local_label = conf.get('label', info.label + '_history')
-            local_unit = conf.get('unit', info.unit)
-            local_format = conf.get('format', info.format)
-            local_display_unit = conf.get('display_unit', '')
-            attr = tango.server.attribute(name=conf['local_name'], dtype=numpy.float,
-                                          dformat=tango.AttrDataFormat.IMAGE,
-                                          max_dim_x=2, max_dim_y=conf['depth'],
-                                          fread=self.read_attribute,
-                                          label=local_label,
-                                          doc='history of ' + info.label,
-                                          unit=local_unit,
-                                          display_unit=local_display_unit,
-                                          format=local_format,
-                                          min_value=info.min_value,
-                                          max_value=info.max_value)
-            # add attr to device
-            self.add_attribute(attr)
-            conf['attribute'] = attr
-            self.logger.debug('History attribute for %s has been created', conf['name'])
-            return True
-
-    def read_attribute(self, attr: tango.Attribute):
-        name = attr.get_name()
-        try:
-            remote_name = None
-            for nm in self.attributes:
-                if self.attributes[nm]['local_name'] == name:
-                    remote_name = nm
-                    break
-            conf = self.attributes[remote_name]
-            if not conf['ready']:
-                # reconnect to attribute
-                conf = self.configure_attribute(remote_name)
-            if not conf['ready']:
-                msg = 'Cannot reconnect %s' % name
-                self.logger.warning(msg)
-                self.debug_stream(msg)
-                attr.set_value(EMPTY_HISTORY)
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                return EMPTY_HISTORY
-            d_p = conf['device_proxy']
-            a_n = conf['attribute_name']
-            n = conf['depth']
-            data = d_p.attribute_history(a_n, n)
-            info = d_p.get_attribute_config_ex(a_n)[0]
-            try:
-                scale = float(info.display_unit)
-            except:
-                scale = 1.0
-            history = numpy.zeros((n, 2))
-            for i, d in enumerate(data):
-                history[i, 1] = d.value * scale
-                history[i, 0] = d.time.totime()
-            attr.set_value(history)
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            # self.logger.debug('Reading OK')
-            return history
-        except:
-            self.log_exception('Error reading %s' % name)
-            attr.set_value(EMPTY_HISTORY)
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            return EMPTY_HISTORY
+        if conf['attribute'] is not None:
+            return False
+        # get remote attr info
+        info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
+        # create local attribute
+        local_label = conf.get('label', info.label + '_history')
+        local_unit = conf.get('unit', info.unit)
+        local_format = conf.get('format', info.format)
+        local_display_unit = conf.get('display_unit', '')
+        attr = tango.server.attribute(name=conf['local_name'], dtype=numpy.float,
+                                      dformat=tango.AttrDataFormat.IMAGE,
+                                      max_dim_x=2, max_dim_y=conf['depth'],
+                                      fread=self.read_attribute,
+                                      label=local_label,
+                                      doc='history of ' + info.label,
+                                      unit=local_unit,
+                                      display_unit=local_display_unit,
+                                      format=local_format,
+                                      min_value=info.min_value,
+                                      max_value=info.max_value)
+        # add attr to device
+        self.add_attribute(attr)
+        conf['attribute'] = attr
+        self.logger.debug('History attribute for %s has been created', conf['name'])
+        return True
 
     def create_all_attributes(self):
         n = 0
+        m = 0
         for name in self.attributes:
             try:
-                conf = self.attributes[name]
-                if not conf['ready']:
-                    return False
-                if conf['attribute'] is None:
-                    if self.create_attribute(name):
-                        n += 1
+                if self.create_attribute(name):
+                    n += 1
             except:
+                m += 1
                 self.log_exception('Attribute %s creation error for %s' % (name, self))
         if n > 0:
             self.set_state(DevState.RUNNING)
             return True
         else:
             self.logger.warning('No attribute has been created')
-            self.set_state(DevState.FAULT)
+            if m > 0:
+                self.set_state(DevState.FAULT)
+            else:
+                self.set_state(DevState.STANDBY)
             return False
 
     def remove_all_attributes(self):
@@ -241,6 +250,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
                 if conf['attribute'] is not None:
                     self.remove_attribute(conf['attribute'])
                     conf['attribute'] = None
+                    self.logger.debug('Attribute %s removed', name)
             except:
                 self.log_exception('Attribute %s can not be removed' % name)
 

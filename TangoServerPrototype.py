@@ -68,11 +68,13 @@ class TangoServerPrototype(Device):
         if self in TangoServerPrototype.device_list:
             TangoServerPrototype.device_list.remove(self)
         TangoServerPrototype.device_list.append(self)
-        self.logger.info('Device %s added', self.get_name())
+        self.logger.debug('Device %s has been added', self.get_name())
         #
         self.set_state(DevState.RUNNING)
 
-    def read_config_from_file(self, default='TangoAttributeHistoryServer.json'):
+    def read_config_from_file(self, default=None):
+        if default is None:
+            default = self.__class__.__name__ + '.json'
         config_file = self.get_device_property('config_file', default)
         self.config = Configuration(config_file)
         self.set_config()
@@ -125,10 +127,16 @@ class TangoServerPrototype(Device):
         try:
             # set log level
             self.logger.setLevel(self.config.get('log_level', logging.DEBUG))
-            self.logger.debug("Log level set to %s" % self.logger.level)
+            self.logger.debug('Log level has been set to %s',
+                              logging.getLevelName(self.logger.getEffectiveLevel()))
             # set other server parameters
             # self.shot = self.config.get('shot', 0)
-            self.logger.debug('Configuration restored from %s' % self.config.get('file_name'))
+            file_name = self.config.get('file_name')
+            if file_name is None:
+                file_name = ''
+            else:
+                file_name = ' from %s' % file_name
+            self.logger.debug('Configuration has been restored%s' % file_name)
             return True
         except:
             self.logger.info('Configuration error')
@@ -151,7 +159,8 @@ class TangoServerPrototype(Device):
     def read_config_from_properties(self):
         level = self.get_device_property('log_level', self.logger.getEffectiveLevel())
         self.logger.setLevel(level)
-        self.logger.debug('Log level has been set to %s', logging.getLevelName(level))
+        self.logger.debug('Log level has been set to %s',
+                          logging.getLevelName(self.logger.getEffectiveLevel()))
         return self.logger
 
     @staticmethod
