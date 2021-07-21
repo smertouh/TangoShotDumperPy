@@ -71,7 +71,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
         self.remove_all_attributes()
         if self in TangoAttributeHistoryServer.device_list:
             TangoAttributeHistoryServer.device_list.remove(self)
-            self.logger.info('Device %s deleted', self.get_name())
+            self.logger.info('Device %s has been deleted', self.get_name())
 
     def read_attribute(self, attr: tango.Attribute):
         name = attr.get_name()
@@ -193,10 +193,8 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
         return conf
 
     def create_attribute(self, name):
-        conf = self.attributes[name]
+        conf = self.attributes.get(name, {'ready': False})
         if not conf['ready']:
-            return False
-        if conf['attribute'] is not None:
             return False
         # get remote attr info
         info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
@@ -257,37 +255,38 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
 
 def post_init_callback():
     for dev in TangoAttributeHistoryServer.device_list:
-        for attr_n in dev.attributes:
-            try:
-                conf = dev.attributes[attr_n]
-                if conf['ready']:
-                    if conf['attribute'] is None:
-                        # get remote attr info
-                        info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
-                        # create local attribute
-                        local_label = conf.get('label', info.label + '_history')
-                        local_unit = conf.get('unit', info.unit)
-                        local_format = conf.get('format', info.format)
-                        local_display_unit = conf.get('display_unit', '')
-                        attr = tango.server.attribute(name=conf['local_name'], dtype=numpy.float,
-                                                      dformat=tango.AttrDataFormat.IMAGE,
-                                                      max_dim_x=2, max_dim_y=conf['depth'],
-                                                      fread=dev.read_attribute,
-                                                      label=local_label,
-                                                      doc='history of ' + info.label,
-                                                      unit=local_unit,
-                                                      display_unit=local_display_unit,
-                                                      format=local_format,
-                                                      min_value=info.min_value,
-                                                      max_value=info.max_value)
-                        # add attr to device
-                        dev.add_attribute(attr)
-                        conf['attribute'] = attr
-                        dev.logger.info('History attribute for %s has been created', conf['name'])
-                dev.set_state(DevState.RUNNING)
-            except:
-                dev.log_exception('Initialize Error %s %s' % (dev, attr_n))
-                dev.set_state(DevState.FAULT)
+        dev.create_all_attributes()
+        # for attr_n in dev.attributes:
+        #     try:
+        #         conf = dev.attributes[attr_n]
+        #         if conf['ready']:
+        #             if conf['attribute'] is None:
+        #                 # get remote attr info
+        #                 info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
+        #                 # create local attribute
+        #                 local_label = conf.get('label', info.label + '_history')
+        #                 local_unit = conf.get('unit', info.unit)
+        #                 local_format = conf.get('format', info.format)
+        #                 local_display_unit = conf.get('display_unit', '')
+        #                 attr = tango.server.attribute(name=conf['local_name'], dtype=numpy.float,
+        #                                               dformat=tango.AttrDataFormat.IMAGE,
+        #                                               max_dim_x=2, max_dim_y=conf['depth'],
+        #                                               fread=dev.read_attribute,
+        #                                               label=local_label,
+        #                                               doc='history of ' + info.label,
+        #                                               unit=local_unit,
+        #                                               display_unit=local_display_unit,
+        #                                               format=local_format,
+        #                                               min_value=info.min_value,
+        #                                               max_value=info.max_value)
+        #                 # add attr to device
+        #                 dev.add_attribute(attr)
+        #                 conf['attribute'] = attr
+        #                 dev.logger.info('History attribute for %s has been created', conf['name'])
+        #     dev.set_state(DevState.RUNNING)
+        # except:
+        #     dev.log_exception('Initialize Error %s %s' % (dev, attr_n))
+        #     dev.set_state(DevState.FAULT)
 
 
 def read_attribute_history(name, delta_t=None):
