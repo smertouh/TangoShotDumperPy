@@ -247,14 +247,14 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             return False
 
     def remove_all_attributes(self):
-        for name in self.attributes:
-            self.remove_attribute(name)
+        for nm in self.attributes:
+            self.remove_one_attribute(nm)
 
-    def remove_attribute(self, name):
+    def remove_one_attribute(self, name):
         try:
             conf = self.attributes[name]
             if conf['attribute'] is not None:
-                self.remove_attribute(conf['attribute_name'])
+                self.remove_attribute(conf['local_name'])
                 conf['attribute'] = None
                 self.logger.debug('Attribute has been %s removed', name)
         except:
