@@ -137,7 +137,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             # create device proxy
             if d_n in TangoAttributeHistoryServer.tango_devices:
                 d_p = TangoAttributeHistoryServer.tango_devices[d_n]
-                self.logger.debug('Proxy exists for %s', name)
+                self.logger.debug('Using existent proxy for %s', name)
             else:
                 d_p = tango.DeviceProxy(d_n)
                 d_p.ready = False
@@ -251,9 +251,9 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             try:
                 conf = self.attributes[name]
                 if conf['attribute'] is not None:
-                    self.remove_attribute(conf['attribute'])
+                    self.remove_attribute(conf['attribute_name'])
                     conf['attribute'] = None
-                    self.logger.debug('Attribute %s removed', name)
+                    self.logger.debug('Attribute has been %s removed', name)
             except:
                 self.log_exception('Attribute %s can not be removed' % name)
 
