@@ -197,7 +197,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
         return conf
 
     def create_attribute(self, name):
-        conf = self.attributes.get(name, {'ready': False})
+        conf = self.attributes.get(name, DEFAULT_ATTRIB_CONFIG)
         if not conf['ready']:
             return False
         # get remote attr info
@@ -266,37 +266,6 @@ def post_init_callback():
     for dev in TangoAttributeHistoryServer.device_list:
         TangoAttributeHistoryServer.logger.debug('loop %s', dev)
         dev.create_all_attributes()
-        # for attr_n in dev.attributes:
-        #     try:
-        #         conf = dev.attributes[attr_n]
-        #         if conf['ready']:
-        #             if conf['attribute'] is None:
-        #                 # get remote attr info
-        #                 info = conf['device_proxy'].get_attribute_config_ex(conf['attribute_name'])[0]
-        #                 # create local attribute
-        #                 local_label = conf.get('label', info.label + '_history')
-        #                 local_unit = conf.get('unit', info.unit)
-        #                 local_format = conf.get('format', info.format)
-        #                 local_display_unit = conf.get('display_unit', '')
-        #                 attr = tango.server.attribute(name=conf['local_name'], dtype=numpy.float,
-        #                                               dformat=tango.AttrDataFormat.IMAGE,
-        #                                               max_dim_x=2, max_dim_y=conf['depth'],
-        #                                               fread=dev.read_attribute,
-        #                                               label=local_label,
-        #                                               doc='history of ' + info.label,
-        #                                               unit=local_unit,
-        #                                               display_unit=local_display_unit,
-        #                                               format=local_format,
-        #                                               min_value=info.min_value,
-        #                                               max_value=info.max_value)
-        #                 # add attr to device
-        #                 dev.add_attribute(attr)
-        #                 conf['attribute'] = attr
-        #                 dev.logger.info('History attribute for %s has been created', conf['name'])
-        #     dev.set_state(DevState.RUNNING)
-        # except:
-        #     dev.log_exception('Initialize Error %s %s' % (dev, attr_n))
-        #     dev.set_state(DevState.FAULT)
     TangoAttributeHistoryServer.logger.debug('exit')
 
 
