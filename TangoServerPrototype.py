@@ -16,9 +16,11 @@ from tango.server import Device, attribute, command, pipe, device_property
 
 
 class TangoServerPrototype(Device):
+    # ******** class variables ***********
     server_version = '0.0'
     device_list = []
 
+    # ******** attributes ***********
     version = attribute(label="version", dtype=str,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
@@ -31,13 +33,7 @@ class TangoServerPrototype(Device):
                           unit="", format="%7s",
                           doc="Log level")
 
-    @command(dtype_in=int)
-    def set_log_level(self, level):
-        self.logger.setLevel(level)
-        msg = '%s Log level set to %d' % (self.get_name(), level)
-        self.logger.info(msg)
-        self.info_stream(msg)
-
+    # ******** attribute r/w procedures ***********
     def read_version(self):
         return self.server_version
 
@@ -53,6 +49,15 @@ class TangoServerPrototype(Device):
             except:
                 pass
 
+    # ******** commands ***********
+    @command(dtype_in=int)
+    def set_log_level(self, level):
+        self.logger.setLevel(level)
+        msg = '%s Log level set to %d' % (self.get_name(), level)
+        self.logger.info(msg)
+        self.info_stream(msg)
+
+    # ******** init_device ***********
     def init_device(self):
         # default logger
         self.logger = self.config_logger()
@@ -67,13 +72,7 @@ class TangoServerPrototype(Device):
         #
         self.set_state(DevState.RUNNING)
 
-    def read_config_from_file(self, default=None):
-        if default is None:
-            default = self.__class__.__name__ + '.json'
-        config_file = self.get_device_property('config_file', default)
-        self.config = Configuration(config_file)
-        self.set_config()
-
+    # ******** additional helper functions ***********
     def log_exception(self, message=None, level=logging.ERROR):
         ex_type, ex_value, traceback = sys.exc_info()
         tail = ' %s %s' % (ex_type, ex_value)
@@ -118,6 +117,20 @@ class TangoServerPrototype(Device):
         else:
             return {}
 
+    def read_config_from_properties(self):
+        level = self.get_device_property('log_level', self.logger.getEffectiveLevel())
+        self.logger.setLevel(level)
+        self.logger.debug('Log level has been set to %s',
+                          logging.getLevelName(self.logger.getEffectiveLevel()))
+        return self.logger
+
+    def read_config_from_file(self, default=None):
+        if default is None:
+            default = self.__class__.__name__ + '.json'
+        config_file = self.get_device_property('config_file', default)
+        self.config = Configuration(config_file)
+        self.set_config()
+
     def set_config(self):
         try:
             # set log level
@@ -150,13 +163,6 @@ class TangoServerPrototype(Device):
             console_handler.setFormatter(log_formatter)
             logger.addHandler(console_handler)
         return logger
-
-    def read_config_from_properties(self):
-        level = self.get_device_property('log_level', self.logger.getEffectiveLevel())
-        self.logger.setLevel(level)
-        self.logger.debug('Log level has been set to %s',
-                          logging.getLevelName(self.logger.getEffectiveLevel()))
-        return self.logger
 
     @staticmethod
     def convert_polling_status(p_s, name):
