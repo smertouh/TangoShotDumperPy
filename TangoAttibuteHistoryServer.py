@@ -239,8 +239,8 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             self.set_state(DevState.RUNNING)
             return True
         else:
-            self.logger.warning('No attribute has been created')
             if m > 0:
+                self.logger.warning('No attributes has been created')
                 self.set_state(DevState.FAULT)
             else:
                 self.set_state(DevState.STANDBY)
@@ -256,7 +256,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             if conf['attribute'] is not None:
                 self.remove_attribute(conf['local_name'])
                 conf['attribute'] = None
-                self.logger.debug('Attribute has been %s removed', name)
+                self.logger.debug('Attribute %s has been removed', name)
         except:
             self.log_exception('Attribute %s can not be removed' % name)
 
