@@ -16,8 +16,6 @@ import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import Device, attribute, command, pipe, device_property
 
-NaN = float('nan')
-
 
 class TangoShotDumperServer(Device):
     version = '1.0'
@@ -154,7 +152,7 @@ class TangoShotDumperServer(Device):
             self.shot = self.config_get('shot', 0)
             # Restore devices
             items = self.config_get("devices", [])
-            self.device_list = []
+            self.dumper_devices = []
             if len(items) <= 0:
                 self.logger.error("No devices declared")
                 return False
@@ -165,7 +163,7 @@ class TangoShotDumperServer(Device):
                     if 'eval' in unit:
                         item = eval(unit["eval"])
                         item.logger = self.logger
-                        self.device_list.append(item)
+                        self.dumper_devices.append(item)
                         self.logger.info("%s has been added" % item)
                     else:
                         self.logger.info("No 'eval' option for %s" % unit)
@@ -192,7 +190,7 @@ class TangoShotDumperServer(Device):
 
     def activate(self):
         n = 0
-        for item in self.device_list:
+        for item in self.dumper_devices:
             try:
                 if item.activate():
                     n += 1
@@ -203,7 +201,7 @@ class TangoShotDumperServer(Device):
         return n
 
     def check_new_shot(self):
-        for item in self.device_list:
+        for item in self.dumper_devices:
             try:
                 if item.new_shot():
                     self.shot_number_value += 1
@@ -306,7 +304,7 @@ class TangoShotDumperServer(Device):
             self.log_file.write('; Shot=%d' % self.shot)
             # Open zip file
             self.zip_file = self.open_zip_file(self.out_dir)
-            for item in self.device_list:
+            for item in self.dumper_devices:
                 print("Saving from %s" % item.name)
                 try:
                     item.logger = self.logger
