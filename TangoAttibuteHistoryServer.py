@@ -35,13 +35,6 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
     def read_history(self, name):
         return str(read_attribute_history(name))
 
-    @command(dtype_in=int)
-    def set_log_level(self, level):
-        self.logger.setLevel(level)
-        msg = '%s Log level set to %d' % (self.get_name(), level)
-        self.logger.info(msg)
-        self.info_stream(msg)
-
     def init_device(self):
         try:
             if self in TangoAttributeHistoryServer.device_list:
