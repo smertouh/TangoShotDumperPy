@@ -18,6 +18,7 @@ from tango.server import Device, attribute, command, pipe, device_property
 class TangoServerPrototype(Device):
     # ******** class variables ***********
     server_version = '0.0'
+    server_name = 'Python Prototype Tango Server'
     device_list = []
 
     # ******** attributes ***********
@@ -27,15 +28,24 @@ class TangoServerPrototype(Device):
                         unit="", format="%s",
                         doc="Server version")
 
+    name = attribute(label="name", dtype=str,
+                     display_level=DispLevel.OPERATOR,
+                     access=AttrWriteType.READ,
+                     unit="", format="%s",
+                     doc="Server name")
+
     log_level = attribute(label="log_level", dtype=str,
                           display_level=DispLevel.OPERATOR,
                           access=AttrWriteType.READ_WRITE,
                           unit="", format="%7s",
-                          doc="Log level")
+                          doc="Server log level")
 
     # ******** attribute r/w procedures ***********
     def read_version(self):
         return self.server_version
+
+    def read_name(self):
+        return self.server_name
 
     def read_log_level(self):
         return logging.getLevelName(self.logger.getEffectiveLevel())
@@ -52,8 +62,8 @@ class TangoServerPrototype(Device):
     # ******** commands ***********
     @command(dtype_in=int)
     def set_log_level(self, level):
-        self.logger.setLevel(level)
-        msg = '%s Log level set to %d' % (self.get_name(), level)
+        self.write_log_level(level)
+        msg = '%s Log level has been set to %s' % (self.get_name(), self.read_log_level())
         self.logger.info(msg)
         self.info_stream(msg)
 
@@ -62,15 +72,18 @@ class TangoServerPrototype(Device):
         # default logger
         self.logger = self.config_logger()
         self.set_state(DevState.INIT)
-        # set default properties
+        # default properties
         self.config = Configuration()
         self.device_proxy = tango.DeviceProxy(self.get_name())
         # config from file
         self.read_config_from_file()
         # config from properties
         self.read_config_from_properties()
-        #
-        self.set_state(DevState.RUNNING)
+        # set config
+        if self.set_config():
+            self.set_state(DevState.RUNNING)
+        else:
+            self.set_state(DevState.FAULT)
 
     # ******** additional helper functions ***********
     def log_exception(self, message=None, level=logging.ERROR):
@@ -100,14 +113,9 @@ class TangoServerPrototype(Device):
 
     def set_device_property(self, prop: str, value: str):
         try:
-            # self.assert_proxy()
             self.device_proxy.put_property({prop: value})
         except:
-            self.logger.info('Error writing property %s for %s', prop, self.device_name)
-            self.logger.debug('', exc_info=True)
-
-    def property_list(self, filter: str = '*'):
-        return self.device_proxy.get_property_list(filter)
+            self.log_exception('Error writing property %s for %s' % (prop, self.get_name()))
 
     def properties(self, filter: str = '*'):
         # returns dictionary with device properties
@@ -129,7 +137,6 @@ class TangoServerPrototype(Device):
             default = self.__class__.__name__ + '.json'
         config_file = self.get_device_property('config_file', default)
         self.config = Configuration(config_file)
-        self.set_config()
 
     def set_config(self):
         try:
@@ -144,11 +151,10 @@ class TangoServerPrototype(Device):
                 file_name = ''
             else:
                 file_name = ' from %s' % file_name
-            self.logger.debug('Configuration has been restored%s' % file_name)
+            self.logger.debug('Configuration has been set%s' % file_name)
             return True
         except:
-            self.logger.info('Configuration error')
-            self.logger.debug('', exc_info=True)
+            self.log_exception('Configuration set error')
             return False
 
     @staticmethod

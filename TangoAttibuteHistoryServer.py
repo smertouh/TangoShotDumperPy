@@ -58,7 +58,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             self.config['attributes'] = self.attributes
             TangoAttributeHistoryServer.device_list.append(self)
             self.logger.info('Device %s has been initiated with %s attributes', self.get_name(), len(self.attributes))
-            self.set_state(DevState.STANDBY)
+            self.set_state(DevState.RUNNING)
         except:
             self.log_exception()
             self.set_state(DevState.FAULT)
@@ -218,7 +218,7 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
         return True
 
     def create_all_attributes(self):
-        self.logger.debug('entry')
+        # self.logger.debug('entry')
         n = 0
         m = 0
         for name in self.attributes:
@@ -240,8 +240,8 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
             return False
 
     def remove_all_attributes(self):
-        for nm in self.attributes:
-            self.remove_one_attribute(nm)
+        for name in self.attributes:
+            self.remove_one_attribute(name)
 
     def remove_one_attribute(self, name):
         try:
@@ -255,11 +255,11 @@ class TangoAttributeHistoryServer(TangoServerPrototype):
 
 
 def post_init_callback():
-    TangoAttributeHistoryServer.logger.debug('entry')
+    # TangoAttributeHistoryServer.logger.debug('entry')
     for dev in TangoAttributeHistoryServer.device_list:
-        TangoAttributeHistoryServer.logger.debug('loop %s', dev)
+        # TangoAttributeHistoryServer.logger.debug('loop %s', dev)
         dev.create_all_attributes()
-    TangoAttributeHistoryServer.logger.debug('exit')
+    # TangoAttributeHistoryServer.logger.debug('exit')
 
 
 def read_attribute_history(name, delta_t=None):
