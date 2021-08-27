@@ -28,6 +28,7 @@ DEFAULT_ATTRIB_CONFIG = {'ready': False, 'attribute': None, 'device_proxy': None
 
 class TangoAttributeHistoryServer(TangoServerPrototype):
     server_version = '1.0'
+    server_name = 'Tango Attribute History Server'
     tango_devices = {}
     logger = TangoServerPrototype.config_logger()
 
