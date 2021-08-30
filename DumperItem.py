@@ -6,11 +6,13 @@ from typing import IO
 import numpy
 import tango
 
+from TangoShotDumperServer import TangoShotDumperServer
+
 
 class DumperItem:
     class Channel:
         def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
-            self.logger = logging.getLogger(__name__)
+            self.logger = TangoShotDumperServer.config_logger()
             self.device = device
             if type(channel) is int:
                 self.name = prefix + (format % channel)
@@ -226,7 +228,7 @@ class DumperItem:
             self.logger.debug('%s Data saved to %s', self.file_name, zip_entry)
 
     def __init__(self, device_name: str):
-        self.logger = logging.getLogger(__name__)
+        self.logger = TangoShotDumperServer.config_logger()
         self.name = device_name
         self.active = False
         self.device = None

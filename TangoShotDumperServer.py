@@ -20,6 +20,7 @@ from tango.server import Device, attribute, command, pipe, device_property
 class TangoShotDumperServer(Device):
     version = '1.0'
     server_device_list = []
+    # logger = TangoShotDumperServer.config_logger(name=__name__, level=logging.DEBUG)
 
     shot_number = attribute(label="shot_number", dtype=int,
                             display_level=DispLevel.OPERATOR,
@@ -164,7 +165,7 @@ class TangoShotDumperServer(Device):
                         item = eval(unit["eval"])
                         item.logger = self.logger
                         self.dumper_devices.append(item)
-                        self.logger.info("%s has been added" % item)
+                        self.logger.info("%s has been added" % item.name)
                     else:
                         self.logger.info("No 'eval' option for %s" % unit)
                 except:
