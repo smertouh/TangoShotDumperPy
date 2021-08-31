@@ -63,8 +63,8 @@ class TangoShotDumperServer(TangoServerPrototype):
             self.set_state(DevState.RUNNING)
             print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
         except:
-            self.log_exception('Exception in TangoShotDumperServer')
             self.set_state(DevState.FAULT)
+            self.log_exception('Exception in TangoShotDumperServer')
 
     def read_shot_number(self):
         return self.shot_number_value
@@ -89,11 +89,11 @@ class TangoShotDumperServer(TangoServerPrototype):
             self.config["sleep"] = self.config.get("sleep", 1.0)
             self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
             # set shot_number
-            self.shot = self.config.get('shot_number', 0)
-            self.write_shot_number(self.shot)
+            self.shot_number_value = self.config.get('shot_number', 0)
+            self.write_shot_number(self.shot_number_value)
             # set shot_time
-            self.shot_time = self.config.get('shot_time', 0.0)
-            self.write_shot_time(self.shot_time)
+            self.shot_time_value = self.config.get('shot_time', 0.0)
+            self.write_shot_time(self.shot_time_value)
             # Restore devices
             items = self.config.get("devices", [])
             self.dumper_devices = []
@@ -153,8 +153,10 @@ class TangoShotDumperServer(TangoServerPrototype):
                 if item.new_shot():
                     self.shot_number_value += 1
                     self.write_shot_number(self.shot_number_value)
+                    self.config['shot_number'] = self.shot_number_value
                     self.shot_time_value = time.time()
                     self.write_shot_time(self.shot_time_value)
+                    self.config['shot_time'] = self.shot_time_value
                     return True
             except:
                 # self.device_list.remove(item)
@@ -239,17 +241,15 @@ class TangoShotDumperServer(TangoServerPrototype):
             # new shot - save signals
             dts = self.date_time_stamp()
             self.shot = self.shot_number_value
-            self.config['shot_number'] = self.shot_number_value
             self.config['shot_dts'] = dts
-            self.config['shot_time'] = self.shot_time_value
-            print("\r\n%s New Shot %d" % (dts, self.shot))
+            print("\r\n%s New Shot %d" % (dts, self.shot_number_value))
             self.make_log_folder()
             self.lock_output_dir()
             self.log_file = self.open_log_file(self.out_dir)
             # Write date and time
             self.log_file.write(dts)
             # Write shot number
-            self.log_file.write('; Shot=%d; Shot_time=%d' % (self.shot_number_value, self.shot_time_value))
+            self.log_file.write('; Shot=%d; Shot_time=%s' % (self.shot_number_value, self.shot_time_value))
             # Open zip file
             self.zip_file = self.open_zip_file(self.out_dir)
             for item in self.dumper_devices:

@@ -1,17 +1,18 @@
 import time
-from DumperItem import *
+from PrototypeDumperDevice import *
 
 
-class DumperTestDevice(DumperItem):
+class DumperTestDevice(PrototypeDumperDevice):
     n = 0
 
-    def __init__(self, delta_t=-1.0, points=0):
+    def __init__(self, delta_t=-1.0, points=0, folder='DumperTest'):
         super().__init__('test_device')
         self.n = DumperTestDevice.n
         self.name = 'TestDevice_%d' % self.n
         self.shot = 0
         self.delta_t = delta_t
         self.points = points
+        self.folder = folder
         DumperTestDevice.n += 1
 
     def __str__(self):
@@ -33,7 +34,9 @@ class DumperTestDevice(DumperItem):
             return True
         return False
 
-    def save(self, log_file, zip_file, folder=''):
+    def save(self, log_file, zip_file, folder: str = None):
+        if folder is None:
+            folder = self.folder
         log_file.write('; %s=%f' % (self.name, self.time))
         print('    %s = %f' % (self.name, self.time))
         if self.points > 0:

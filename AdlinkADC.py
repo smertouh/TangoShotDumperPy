@@ -1,7 +1,7 @@
-from DumperItem import *
+from PrototypeDumperDevice import *
 
 
-class AdlinkADC(DumperItem):
+class AdlinkADC(PrototypeDumperDevice):
     def __init__(self, device_name='binp/nbi/adc0', folder="ADC_0"):
         super().__init__(device_name)
         self.folder = folder
@@ -41,7 +41,7 @@ class AdlinkADC(DumperItem):
                 retry_count = 3
                 while retry_count > 0:
                     try:
-                        channel = DumperItem.Channel(self.device, attr)
+                        channel = PrototypeDumperDevice.Channel(self.device, attr)
                         channel.logger = self.logger
                         # Read save_data and save_log flags
                         properties = channel.read_properties()

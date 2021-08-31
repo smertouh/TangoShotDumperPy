@@ -9,7 +9,7 @@ import tango
 from TangoShotDumperServer import TangoShotDumperServer
 
 
-class DumperItem:
+class PrototypeDumperDevice:
     class Channel:
         def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
             self.logger = TangoShotDumperServer.config_logger()
@@ -268,26 +268,10 @@ class DumperItem:
         except:
             return ''
 
-    def property_list(self, filter: str = '*'):
-        return self.device.get_property_list(filter)
-
     def properties(self, filter: str = '*'):
         # returns dictionary with device properties
         names = self.device.get_property_list(filter)
         return self.device.get_property(names)
-
-    @staticmethod
-    def config_logger(name: str = __name__, level: int = logging.DEBUG):
-        logger = logging.getLogger(name)
-        if not logger.hasHandlers():
-            logger.propagate = False
-            logger.setLevel(level)
-            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(log_formatter)
-            logger.addHandler(console_handler)
-        return logger
 
     TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
     FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
@@ -295,9 +279,9 @@ class DumperItem:
     @staticmethod
     def as_boolean(value):
         value = str(value)
-        if value.lower() in DumperItem.TRUE_VALUES:
+        if value.lower() in PrototypeDumperDevice.TRUE_VALUES:
             return True
-        if value.lower() in DumperItem.FALSE_VALUES:
+        if value.lower() in PrototypeDumperDevice.FALSE_VALUES:
             return False
         return None
 

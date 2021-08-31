@@ -1,14 +1,14 @@
-from DumperItem import *
+from PrototypeDumperDevice import *
 
 
-class TangoAttribute(DumperItem):
+class TangoAttribute(PrototypeDumperDevice):
     def __init__(self, device_name, attribute_name, folder=None, force=True):
         super().__init__(device_name)
         self.attribute_name = attribute_name
         self.folder = folder
         self.force = force
         # self.retry_count = 3
-        self.channel = DumperItem.Channel(self.device, attribute_name)
+        self.channel = PrototypeDumperDevice.Channel(self.device, attribute_name)
         self.channel.logger = self.logger
 
     def save(self, log_file, zip_file, folder=None):

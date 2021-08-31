@@ -1,7 +1,7 @@
-from DumperItem import *
+from PrototypeDumperDevice import *
 
 
-class PicoLog1000(DumperItem):
+class PicoLog1000(PrototypeDumperDevice):
     def __init__(self, tango_device_name: str, folder='PicoLog'):
         super().__init__(tango_device_name)
         self.folder = folder
