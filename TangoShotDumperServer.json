@@ -1,0 +1,17 @@
+{
+    "sleep": 1.0,
+    "log_level": 20,
+    "out_root_dir": "D:\\data\\",
+    "devices": [
+        {
+            "exec": "from TangoAttribute import TangoAttribute",
+            "eval": "TangoAttribute('sys/tg_test/1', 'double_spectrum_ro', 'tangotest')"
+        },
+        {
+            "exec": "from AdlinkADC import AdlinkADC",
+            "eval": "AdlinkADC('binp/nbi/adc0', 'adc0')"
+        }
+    ],
+    "shot_number": 7558,
+    "shot_time": "2021-07-05 16:53:46"
+}

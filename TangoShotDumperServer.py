@@ -123,11 +123,15 @@ class TangoShotDumperServer(TangoServerPrototype):
 
     def write_config(self, file_name=None):
         try:
-            self.config['shot_number'] = self.shot
+            # self.config['shot_number'] = self.shot
             self.config.write(file_name)
-            self.logger.debug('Configuration saved to %s' % file_name)
+            if file_name is None:
+                file_name = ''
+            else:
+                file_name = 'to ' + file_name
+            self.logger.debug('Configuration saved %s' % file_name)
         except:
-            self.logger.info('Configuration save error to %s' % file_name)
+            self.logger.info('Configuration save error %s' % file_name)
             self.logger.debug('', exc_info=True)
             return False
 
@@ -234,10 +238,10 @@ class TangoShotDumperServer(TangoServerPrototype):
                 return
             # new shot - save signals
             dts = self.date_time_stamp()
-            self.shot += 1
-            self.config['shot_number'] = self.shot
+            self.shot = self.shot_number_value
+            self.config['shot_number'] = self.shot_number_value
             self.config['shot_dts'] = dts
-            self.config['shot_time'] = time.time()
+            self.config['shot_time'] = self.shot_time_value
             print("\r\n%s New Shot %d" % (dts, self.shot))
             self.make_log_folder()
             self.lock_output_dir()
@@ -245,7 +249,7 @@ class TangoShotDumperServer(TangoServerPrototype):
             # Write date and time
             self.log_file.write(dts)
             # Write shot number
-            self.log_file.write('; Shot=%d; Shot_time=%d' % (self.shot, self.shot_time))
+            self.log_file.write('; Shot=%d; Shot_time=%d' % (self.shot_number_value, self.shot_time_value))
             # Open zip file
             self.zip_file = self.open_zip_file(self.out_dir)
             for item in self.dumper_devices:
@@ -257,8 +261,8 @@ class TangoShotDumperServer(TangoServerPrototype):
                     self.logger.debug('', exc_info=True)
             zfn = os.path.basename(self.zip_file.filename)
             self.zip_file.close()
-            self.log_file.write('; File=%s' % zfn)
-            self.log_file.write('\n')
+            self.log_file.write('; File=%s\n' % zfn)
+            # self.log_file.write('\n')
             self.log_file.close()
             self.unlock_output_dir()
             self.write_config()
