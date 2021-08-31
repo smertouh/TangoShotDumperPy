@@ -16,11 +16,12 @@ import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import Device, attribute, command, pipe, device_property
 
+from TangoServerPrototype import TangoServerPrototype
 
-class TangoShotDumperServer(Device):
-    version = '1.0'
-    server_device_list = []
-    # logger = TangoShotDumperServer.config_logger(name=__name__, level=logging.DEBUG)
+
+class TangoShotDumperServer(TangoServerPrototype):
+    server_version = '1.0'
+    server_name = 'Tango Shot Dumper Server'
 
     shot_number = attribute(label="shot_number", dtype=int,
                             display_level=DispLevel.OPERATOR,
@@ -42,9 +43,7 @@ class TangoShotDumperServer(Device):
         self.info_stream(msg)
 
     def init_device(self):
-        # set default properties
-        self.logger = self.config_logger(level=logging.DEBUG)
-        self.device_proxy = tango.DeviceProxy(self.get_name())
+        # set defaults
         self.log_file = None
         self.zip_file = None
         self.out_root_dir = '.\\data\\'
@@ -52,29 +51,19 @@ class TangoShotDumperServer(Device):
         self.locked = False
         self.shot_number_value = 0
         self.shot_time_value = 0.0
-        # read config
+        #
+        super().init_device()
+        #
+        self.set_state(DevState.INIT)
         try:
-            self.set_state(DevState.INIT)
-            # read config from device properties
-            level = self.get_device_property('log_level', logging.DEBUG)
-            self.logger.setLevel(level)
-            # read config from file
-            self.config_file = self.get_device_property('config_file', 'ShotDumperPy.json')
-            self.read_config(self.config_file)
-            # read shot number
-            n = int(self.get_device_property('shot_number', 0))
-            self.write_shot_number(n)
-            # read shot time
-            t = float(self.get_device_property('shot_time', 0.0))
-            self.write_shot_time(t)
-            if self not in TangoShotDumperServer.server_device_list:
-                TangoShotDumperServer.server_device_list.append(self)
+            # add to servers list
+            if self not in TangoShotDumperServer.device_list:
+                TangoShotDumperServer.device_list.append(self)
+            #
+            self.set_state(DevState.RUNNING)
             print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
         except:
-            msg = 'Exception in TangoShotDumperServer'
-            self.logger.error(msg)
-            self.error_stream(msg)
-            self.logger.debug('', exc_info=True)
+            self.log_exception('Exception in TangoShotDumperServer')
             self.set_state(DevState.FAULT)
 
     def read_shot_number(self):
@@ -91,74 +80,22 @@ class TangoShotDumperServer(Device):
         self.set_device_property('shot_time', str(value))
         self.shot_time_value = value
 
-    def get_device_property(self, prop: str, default=None):
+    def set_config(self):
         try:
-            # self.assert_proxy()
-            pr = self.device_proxy.get_property(prop)[prop]
-            result = None
-            if len(pr) > 0:
-                result = pr[0]
-            if default is None:
-                return result
-            if result is None or result == '':
-                result = default
-            else:
-                result = type(default)(result)
-        except:
-            # self.logger.debug('Error reading property %s for %s', prop, self.name)
-            result = default
-        return result
-
-    def set_device_property(self, prop: str, value: str):
-        try:
-            # self.assert_proxy()
-            self.device_proxy.put_property({prop: value})
-        except:
-            self.logger.info('Error writing property %s for %s', prop, self.device_name)
-            self.logger.debug('', exc_info=True)
-
-    @staticmethod
-    def config_logger(name: str = __name__, level: int = None):
-        if level is None:
-            if hasattr(TangoShotDumperServer.config_logger, 'level'):
-                level = TangoShotDumperServer.config_logger.level
-            else:
-                level = logging.DEBUG
-        logger = logging.getLogger(name)
-        if not logger.hasHandlers():
-            logger.propagate = False
-            logger.setLevel(level)
-            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
-            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(log_formatter)
-            logger.addHandler(console_handler)
-        TangoShotDumperServer.config_logger.level = logger.getEffectiveLevel()
-        return logger
-
-    def config_get(self, name, default=None):
-        try:
-            result = self.config.get(name, default)
-            if default is not None:
-                result = type(default)(result)
-        except:
-            result = default
-        return result
-
-    def read_config(self, file_name):
-        try:
-            # Read config from file
-            with open(file_name, 'r') as configfile:
-                s = configfile.read()
-            self.config = json.loads(s)
-            # Restore log level
-            self.logger.setLevel(self.config_get('log_level', logging.DEBUG))
-            self.logger.debug("Log level set to %s" % self.logger.level)
-            self.config["sleep"] = self.config_get("sleep", 1.0)
-            self.out_root_dir = self.config_get("out_root_dir", '.\\data\\')
-            self.shot = self.config_get('shot', 0)
+            super().set_config()
+            file_name = self.config.file_name
+            if file_name is None:
+                file_name = ''
+            self.config["sleep"] = self.config.get("sleep", 1.0)
+            self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
+            # set shot_number
+            self.shot = self.config.get('shot_number', 0)
+            self.write_shot_number(self.shot)
+            # set shot_time
+            self.shot_time = self.config.get('shot_time', 0.0)
+            self.write_shot_time(self.shot_time)
             # Restore devices
-            items = self.config_get("devices", [])
+            items = self.config.get("devices", [])
             self.dumper_devices = []
             if len(items) <= 0:
                 self.logger.error("No devices declared")
@@ -177,18 +114,17 @@ class TangoShotDumperServer(Device):
                 except:
                     self.logger.warning("Error in %s" % str(unit))
                     self.logger.debug('', exc_info=True)
-            self.logger.debug('Configuration restored from %s' % file_name)
+            self.logger.debug('Configuration restored %s' % file_name)
             return True
         except:
-            self.logger.info('Configuration read error from %s' % file_name)
+            self.logger.info('Configuration error %s' % file_name)
             self.logger.debug('', exc_info=True)
             return False
 
-    def write_config(self, file_name):
+    def write_config(self, file_name=None):
         try:
-            self.config['shot'] = self.shot
-            with open(file_name, 'w') as configfile:
-                configfile.write(json.dumps(self.config, indent=4))
+            self.config['shot_number'] = self.shot
+            self.config.write(file_name)
             self.logger.debug('Configuration saved to %s' % file_name)
         except:
             self.logger.info('Configuration save error to %s' % file_name)
@@ -299,8 +235,9 @@ class TangoShotDumperServer(Device):
             # new shot - save signals
             dts = self.date_time_stamp()
             self.shot += 1
-            self.config['shot'] = self.shot
-            self.config['shot_time'] = dts
+            self.config['shot_number'] = self.shot
+            self.config['shot_dts'] = dts
+            self.config['shot_time'] = time.time()
             print("\r\n%s New Shot %d" % (dts, self.shot))
             self.make_log_folder()
             self.lock_output_dir()
@@ -308,15 +245,11 @@ class TangoShotDumperServer(Device):
             # Write date and time
             self.log_file.write(dts)
             # Write shot number
-            self.log_file.write('; Shot=%d' % self.shot)
+            self.log_file.write('; Shot=%d; Shot_time=%d' % (self.shot, self.shot_time))
             # Open zip file
             self.zip_file = self.open_zip_file(self.out_dir)
             for item in self.dumper_devices:
                 print("Saving from %s" % item.name)
-                try:
-                    item.logger = self.logger
-                except:
-                    pass
                 try:
                     item.save(self.log_file, self.zip_file)
                 except:
@@ -328,7 +261,7 @@ class TangoShotDumperServer(Device):
             self.log_file.write('\n')
             self.log_file.close()
             self.unlock_output_dir()
-            self.write_config(self.config_file)
+            self.write_config()
         except:
             self.logger.error("Unexpected exception")
             self.logger.debug('', exc_info=True)
@@ -338,7 +271,7 @@ class TangoShotDumperServer(Device):
 
 def looping():
     t0 = time.time()
-    for dev in TangoShotDumperServer.server_device_list:
+    for dev in TangoShotDumperServer.device_list:
         time.sleep(dev.config['sleep'])
         try:
             dev.process()

@@ -12,6 +12,6 @@
             "eval": "AdlinkADC('binp/nbi/adc0', 'adc0')"
         }
     ],
-    "shot": 7558,
+    "shot_number": 7558,
     "shot_time": "2021-07-05 16:53:46"
 }
