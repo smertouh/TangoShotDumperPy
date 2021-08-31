@@ -43,7 +43,7 @@ class TangoShotDumperServer(Device):
 
     def init_device(self):
         # set default properties
-        self.logger = self.config_logger(name=__name__, level=logging.DEBUG)
+        self.logger = self.config_logger(level=logging.DEBUG)
         self.device_proxy = tango.DeviceProxy(self.get_name())
         self.log_file = None
         self.zip_file = None
@@ -118,7 +118,12 @@ class TangoShotDumperServer(Device):
             self.logger.debug('', exc_info=True)
 
     @staticmethod
-    def config_logger(name: str = __name__, level: int = logging.DEBUG):
+    def config_logger(name: str = __name__, level: int = None):
+        if level is None:
+            if hasattr(TangoShotDumperServer.config_logger, 'level'):
+                level = TangoShotDumperServer.config_logger.level
+            else:
+                level = logging.DEBUG
         logger = logging.getLogger(name)
         if not logger.hasHandlers():
             logger.propagate = False
@@ -128,6 +133,7 @@ class TangoShotDumperServer(Device):
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
             logger.addHandler(console_handler)
+        TangoShotDumperServer.config_logger.level = logger.getEffectiveLevel()
         return logger
 
     def config_get(self, name, default=None):
