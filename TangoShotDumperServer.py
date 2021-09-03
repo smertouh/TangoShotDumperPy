@@ -27,13 +27,13 @@ class TangoShotDumperServer(TangoServerPrototype):
                             display_level=DispLevel.OPERATOR,
                             access=AttrWriteType.READ,
                             unit="", format="%d",
-                            doc="Shot number")
+                            doc="Last shot number")
 
     shot_time = attribute(label="shot_time", dtype=float,
                           display_level=DispLevel.OPERATOR,
                           access=AttrWriteType.READ,
                           unit="s", format="%f",
-                          doc="Shot time")
+                          doc="Last shot time")
 
     @command(dtype_in=int)
     def set_log_level(self, level):
