@@ -72,6 +72,18 @@ class TangoShotDumperServer(TangoServerPrototype):
     def write_shot_number(self, value):
         self.set_device_property('shot_number', str(value))
         self.shot_number_value = value
+        db = self.device_proxy.get_device_db()
+        apr = db.get_device_attribute_property(self.device_proxy.name(), 'shot_number')
+        apr['shot_number']['__value'] = str(value)
+        db.put_device_attribute_property(self.device_proxy.name(), apr)
+
+    # def write_attribute(self, attr_name, value):
+    #     self.set_device_property(attr_name, str(value))
+    #     self.shot_number_value = value
+    #     db = self.device_proxy.get_device_db()
+    #     apr = db.get_device_attribute_property(self.device_proxy.name(), attr_name)
+    #     apr[attr_name]['__value'] = str(value)
+    #     db.put_device_attribute_property(self.device_proxy.name(), apr)
 
     def read_shot_time(self):
         return self.shot_time_value
@@ -90,7 +102,7 @@ class TangoShotDumperServer(TangoServerPrototype):
             self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
             # set shot_number
             self.shot_number_value = self.config.get('shot_number', 0)
-            self.write_shot_number(self.shot_number_value)
+            ##self.write_shot_number(self.shot_number_value)
             # set shot_time
             self.shot_time_value = self.config.get('shot_time', 0.0)
             self.write_shot_time(self.shot_time_value)
