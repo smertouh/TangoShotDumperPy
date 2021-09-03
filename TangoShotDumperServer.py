@@ -8,6 +8,7 @@ A. L. Sanin, started 25.06.2021
 import datetime
 import logging
 import os
+import sys
 import time
 import json
 import zipfile
@@ -34,13 +35,6 @@ class TangoShotDumperServer(TangoServerPrototype):
                           access=AttrWriteType.READ,
                           unit="s", format="%f",
                           doc="Last shot time")
-
-    @command(dtype_in=int)
-    def set_log_level(self, level):
-        self.logger.setLevel(level)
-        msg = '%s Log level set to %d' % (self.get_name(), level)
-        self.logger.info(msg)
-        self.info_stream(msg)
 
     def init_device(self):
         # set defaults
@@ -170,10 +164,7 @@ class TangoShotDumperServer(TangoServerPrototype):
                 if item.new_shot():
                     self.shot_number_value += 1
                     self.write_shot_number(self.shot_number_value)
-                    self.config['shot_number'] = self.shot_number_value
-                    self.shot_time_value = time.time()
-                    self.write_shot_time(self.shot_time_value)
-                    self.config['shot_time'] = self.shot_time_value
+                    self.write_shot_time(time.time())
                     return True
             except:
                 # self.device_list.remove(item)
