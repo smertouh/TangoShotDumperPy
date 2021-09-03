@@ -20,7 +20,7 @@ from TangoServerPrototype import TangoServerPrototype
 
 
 class TangoShotDumperServer(TangoServerPrototype):
-    server_version = '1.0'
+    server_version = '1.1'
     server_name = 'Tango Shot Dumper Server'
 
     shot_number = attribute(label="shot_number", dtype=int,
@@ -32,7 +32,7 @@ class TangoShotDumperServer(TangoServerPrototype):
     shot_time = attribute(label="shot_time", dtype=float,
                           display_level=DispLevel.OPERATOR,
                           access=AttrWriteType.READ,
-                          unit="s", format="%d",
+                          unit="s", format="%f",
                           doc="Shot time")
 
     @command(dtype_in=int)
@@ -70,27 +70,23 @@ class TangoShotDumperServer(TangoServerPrototype):
         return self.shot_number_value
 
     def write_shot_number(self, value):
-        #self.set_device_property('shot_number', str(value))
         self.shot_number_value = value
+        self.config['shot_number'] = value
         db = self.device_proxy.get_device_db()
         pr = db.get_device_attribute_property(self.get_name(), 'shot_number')
         pr['shot_number']['__value'] = str(value)
         db.put_device_attribute_property(self.get_name(), pr)
 
-    # def write_attribute(self, attr_name, value):
-    #     self.set_device_property(attr_name, str(value))
-    #     self.shot_number_value = value
-    #     db = self.device_proxy.get_device_db()
-    #     apr = db.get_device_attribute_property(self.device_proxy.name(), attr_name)
-    #     apr[attr_name]['__value'] = str(value)
-    #     db.put_device_attribute_property(self.device_proxy.name(), apr)
-
     def read_shot_time(self):
         return self.shot_time_value
 
     def write_shot_time(self, value):
-        self.set_device_property('shot_time', str(value))
         self.shot_time_value = value
+        self.config['shot_time'] = value
+        db = self.device_proxy.get_device_db()
+        pr = db.get_device_attribute_property(self.get_name(), 'shot_time')
+        pr['shot_time']['__value'] = str(value)
+        db.put_device_attribute_property(self.get_name(), pr)
 
     def set_config(self):
         try:
@@ -107,14 +103,14 @@ class TangoShotDumperServer(TangoServerPrototype):
                 value = int(pr['shot_number']['__value'][0])
             except:
                 value = 0
-            # self.shot_number_value = self.config.get('shot_number', 0)
-            self.shot_number_value = value
-            self.config['shot_number'] = value
-            # self.write_shot_number(self.shot_number_value)
             self.write_shot_number(value)
             # set shot_time
-            self.shot_time_value = self.config.get('shot_time', 0.0)
-            self.write_shot_time(self.shot_time_value)
+            pr = db.get_device_attribute_property(self.get_name(), 'shot_time')
+            try:
+                value = int(pr['shot_time']['__value'][0])
+            except:
+                value = 0
+            self.write_shot_time(value)
             # Restore devices
             items = self.config.get("devices", [])
             self.dumper_devices = []
