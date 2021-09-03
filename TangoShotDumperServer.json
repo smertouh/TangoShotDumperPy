@@ -16,7 +16,7 @@
             "eval": "AdlinkADC('binp/nbi/adc0', 'adc0')"
         }
     ],
-    "shot_number": 34,
-    "shot_time": 1630647833.5858376,
-    "shot_dts": "2021-09-03 12:43:53"
+    "shot_number": 36,
+    "shot_time": 1630656048.801903,
+    "shot_dts": "2021-09-03 15:00:48"
 }
