@@ -21,7 +21,7 @@ from TangoServerPrototype import TangoServerPrototype
 
 
 class TangoShotDumperServer(TangoServerPrototype):
-    server_version = '1.1'
+    server_version = '2.0'
     server_name = 'Tango Shot Dumper Server'
 
     shot_number = attribute(label="shot_number", dtype=int,
