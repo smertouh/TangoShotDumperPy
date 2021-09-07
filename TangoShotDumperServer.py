@@ -36,6 +36,13 @@ class TangoShotDumperServer(TangoServerPrototype):
                           unit="s", format="%f",
                           doc="Last shot time")
 
+    @command(dtype_in=int)
+    def dump(self, level):
+        try:
+            self.process()
+        except:
+            self.log_exception('%s process error' % self, logging.WARNING)
+
     def init_device(self):
         # set defaults
         self.log_file = None
@@ -281,21 +288,22 @@ class TangoShotDumperServer(TangoServerPrototype):
         return
 
 
-def looping():
-    t0 = time.time()
-    for dev in TangoShotDumperServer.device_list:
-        time.sleep(dev.config['sleep'])
-        try:
-            dev.process()
-            # msg = '%s processed' % dev.name
-            # dev.logger.debug(msg)
-            # dev.debug_stream(msg)
-        except:
-            msg = '%s process error' % dev
-            dev.logger.warning(msg)
-            dev.error_stream(msg)
-            dev.logger.debug('', exc_info=True)
+# def looping():
+#     t0 = time.time()
+#     for dev in TangoShotDumperServer.device_list:
+#         time.sleep(dev.config['sleep'])
+#         try:
+#             dev.process()
+#             # msg = '%s processed' % dev.name
+#             # dev.logger.debug(msg)
+#             # dev.debug_stream(msg)
+#         except:
+#             msg = '%s process error' % dev
+#             dev.logger.warning(msg)
+#             dev.error_stream(msg)
+#             dev.logger.debug('', exc_info=True)
 
 
 if __name__ == "__main__":
-    TangoShotDumperServer.run_server(event_loop=looping)
+    # TangoShotDumperServer.run_server(event_loop=looping)
+    TangoShotDumperServer.run_server()
