@@ -83,6 +83,7 @@ class TangoShotDumperServer(TangoServerPrototype):
         db.put_device_attribute_property(self.get_name(), pr)
 
     def set_config(self):
+        file_name = None
         try:
             super().set_config()
             file_name = self.config.file_name
@@ -181,15 +182,15 @@ class TangoShotDumperServer(TangoServerPrototype):
         return datetime.datetime.today().strftime('%H:%M:%S')
 
     @staticmethod
-    def get_log_folder():
+    def output_dir_name():
         ydf = datetime.datetime.today().strftime('%Y')
         mdf = datetime.datetime.today().strftime('%Y-%m')
         ddf = datetime.datetime.today().strftime('%Y-%m-%d')
         folder = os.path.join(ydf, mdf, ddf)
         return folder
 
-    def make_log_folder(self):
-        of = os.path.join(self.out_root_dir, self.get_log_folder())
+    def make_output_dir(self):
+        of = os.path.join(self.out_root_dir, self.output_dir_name())
         try:
             if not os.path.exists(of):
                 os.makedirs(of)
@@ -222,13 +223,13 @@ class TangoShotDumperServer(TangoServerPrototype):
         self.logger.debug("Directory unlocked")
 
     def open_log_file(self, folder: str = ''):
-        logf = open(os.path.join(folder, self.get_log_file_name()), 'a')
-        return logf
+        log_file = open(os.path.join(folder, self.get_log_file_name()), 'a')
+        return log_file
 
     @staticmethod
     def get_log_file_name():
-        logfn = datetime.datetime.today().strftime('%Y-%m-%d.log')
-        return logfn
+        file_name = datetime.datetime.today().strftime('%Y-%m-%d.log')
+        return file_name
 
     @staticmethod
     def open_zip_file(folder):
@@ -251,7 +252,7 @@ class TangoShotDumperServer(TangoServerPrototype):
             self.shot = self.shot_number_value
             self.config['shot_dts'] = dts
             print("\r\n%s New Shot %d" % (dts, self.shot_number_value))
-            self.make_log_folder()
+            self.make_output_dir()
             self.lock_output_dir()
             self.log_file = self.open_log_file(self.out_dir)
             # Write date and time

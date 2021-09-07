@@ -1,0 +1,22 @@
+{
+    "sleep": 1.0,
+    "log_level": 20,
+    "out_root_dir": "D:\\data\\",
+    "devices": [
+        {
+            "exec": "from TangoAttribute import TangoAttribute",
+            "eval": "TangoAttribute('sys/tg_test/1', 'double_spectrum_ro', 'tangotest')"
+        },
+        {
+            "exec": "from DumperTestDevice import DumperTestDevice",
+            "eval": "DumperTestDevice(5.0, 100)"
+        },
+        {
+            "exec": "from AdlinkADC import AdlinkADC",
+            "eval": "AdlinkADC('binp/nbi/adc0', 'adc0')"
+        }
+    ],
+    "shot_number": 125,
+    "shot_time": 1630993744.5477858,
+    "shot_dts": "2021-09-07 12:49:04"
+}

@@ -12,8 +12,7 @@ import sys
 import time
 import zipfile
 
-from TangoServerPrototype import Configuration
-from TangoUtils import config_logger
+from TangoUtils import config_logger, Configuration
 
 
 class TangoShotDumper:
@@ -29,20 +28,18 @@ class TangoShotDumper:
         self.out_root_dir = '.\\data\\'
         self.out_dir = None
         self.locked = False
+        self.lock_file = None
         self.shot_number_value = 0
         self.shot_time_value = 0.0
         self.dumper_devices = []
-        self.lock_file = None
-        self.locked = False
-        #
-        self.config_file_name = self.__class__.__name__ + '_' + sys.argv[1] + '.json'
+        try:
+            self.config_file_name = self.__class__.__name__ + '_' + sys.argv[1] + '.json'
+        except:
+            self.config_file_name = self.__class__.__name__ + '_' + '.json'
         # read config from file
         self.config = Configuration(self.config_file_name)
         # set config
-        if self.set_config():
-            self.logger.debug('Config restored')
-        else:
-            self.logger.warning('Config restore error')
+        self.set_config()
 
     def read_shot_number(self):
         return self.shot_number_value
