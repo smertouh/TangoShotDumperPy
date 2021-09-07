@@ -102,7 +102,7 @@ class TangoShotDumperServer(TangoServerPrototype):
             # set shot_time
             pr = db.get_device_attribute_property(self.get_name(), 'shot_time')
             try:
-                value = int(pr['shot_time']['__value'][0])
+                value = float(pr['shot_time']['__value'][0])
             except:
                 value = 0
             self.write_shot_time(value)
