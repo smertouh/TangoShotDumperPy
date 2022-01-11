@@ -5,7 +5,7 @@ from PrototypeDumperDevice import *
 class DumperTestDevice(PrototypeDumperDevice):
     n = 0
 
-    def __init__(self, delta_t=-1.0, points=0, folder='DumperTest'):
+    def __init__(self, delta_t=-1.0, points=0, folder='DumperTest', parameters=''):
         super().__init__('test_device')
         self.n = DumperTestDevice.n
         self.name = 'TestDevice_%d' % self.n
@@ -13,6 +13,7 @@ class DumperTestDevice(PrototypeDumperDevice):
         self.delta_t = delta_t
         self.points = points
         self.folder = folder
+        self.parameters = parameters
         DumperTestDevice.n += 1
 
     def __str__(self):
@@ -50,4 +51,6 @@ class DumperTestDevice(PrototypeDumperDevice):
             entry = folder + "/channel_%d.txt" % self.n
             zip_file.writestr(entry, buf)
             entry = folder + "/paramchannel_%d.txt" % self.n
-            zip_file.writestr(entry, "name=test_device_%d\r\nxlabel=Point number\r\nunit=a.u." % self.n)
+            text = "name=test_device_%d\r\nxlabel=Point number\r\nunit=a.u." % self.n
+            text += self.parameters
+            zip_file.writestr(entry, text)
