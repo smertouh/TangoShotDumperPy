@@ -226,7 +226,7 @@ class TangoShotDumper:
                 try:
                     item.save(self.log_file, self.zip_file)
                 except:
-                    self.logger.error("Exception saving %s" % str(item))
+                    self.logger.error("Exception saving %s %s" % (str(item), sys.exc_info()[1]))
                     self.logger.debug('', exc_info=True)
             zfn = os.path.basename(self.zip_file.filename)
             self.zip_file.close()
