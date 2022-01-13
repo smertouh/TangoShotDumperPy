@@ -12,7 +12,12 @@ import sys
 import time
 import zipfile
 
-from TangoUtils import config_logger, Configuration
+# from TangoUtils import config_logger, Configuration
+try:
+    from TangoUtils import config_logger, LOG_FORMAT_STRING_SHORT, log_exception, Configuration
+except:
+    sys.path.append('../TangoUtils')
+    from TangoUtils import config_logger, LOG_FORMAT_STRING_SHORT, log_exception, Configuration
 
 
 class TangoShotDumper:
@@ -91,20 +96,16 @@ class TangoShotDumper:
             self.logger.debug('Configuration restored %s' % file_name)
             return True
         except:
-            self.logger.info('Configuration error %s' % file_name)
+            self.logger.info('Configuration error in %s %s', file_name, sys.exc_info()[1])
             self.logger.debug('', exc_info=True)
             return False
 
     def write_config(self, file_name=None):
         try:
             self.config.write(file_name)
-            if file_name is None:
-                file_name = ''
-            else:
-                file_name = 'to ' + file_name
-            self.logger.debug('Configuration saved %s' % file_name)
+            self.logger.debug('Configuration saved to %s', file_name)
         except:
-            self.logger.info('Configuration save error %s' % file_name)
+            self.logger.error('Configuration save to %s error %s', file_name, sys.exc_info()[1])
             self.logger.debug('', exc_info=True)
             return False
 
@@ -116,7 +117,7 @@ class TangoShotDumper:
                     n += 1
             except:
                 # self.server_device_list.remove(item)
-                self.logger.error("%s activation error", item)
+                self.logger.error("%s activation error %s", item, sys.exc_info()[1])
                 self.logger.debug('', exc_info=True)
         return n
 
@@ -130,7 +131,7 @@ class TangoShotDumper:
                     return True
             except:
                 # self.device_list.remove(item)
-                self.logger.error("%s check for new shot", item)
+                self.logger.error("Error %s check for new shot %s", item, sys.exc_info()[1])
                 self.logger.debug('', exc_info=True)
         return False
 
@@ -159,7 +160,7 @@ class TangoShotDumper:
             self.out_dir = of
             return True
         except:
-            self.logger.debug("Can not create output folder %s", of)
+            self.logger.warning("Can not create output folder %s", of)
             self.out_dir = None
             return False
 
@@ -236,7 +237,7 @@ class TangoShotDumper:
             self.unlock_output_dir()
             self.write_config()
         except:
-            self.logger.error("Unexpected exception")
+            self.logger.error("Unexpected exception %s" % sys.exc_info()[1])
             self.logger.debug('', exc_info=True)
         print(self.time_stamp(), "Waiting for next shot ...")
         return
@@ -250,6 +251,5 @@ if __name__ == "__main__":
         try:
             tsd.process()
         except:
-            msg = '%s process error' % tsd
-            tsd.logger.warning(msg)
+            tsd.logger.error("Exception %s" % sys.exc_info()[1])
             tsd.logger.debug('', exc_info=True)

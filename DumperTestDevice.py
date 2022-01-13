@@ -23,7 +23,7 @@ class DumperTestDevice(PrototypeDumperDevice):
             return True
         self.active = True
         self.time = time.time()
-        self.logger.debug("TestDevice %s activated" % self.name)
+        # self.logger.debug("TestDevice %s activated" % self.name)
         return True
 
     def new_shot(self):
