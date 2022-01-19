@@ -234,6 +234,7 @@ class PrototypeDumperDevice:
         self.device = None
         self.time = 0.0
         self.activation_timeout = 10.0
+        self.activate()
 
     def new_shot(self):
         return False

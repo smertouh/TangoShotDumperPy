@@ -19,6 +19,7 @@ from tango.server import Device, attribute, command, pipe, device_property
 
 from TangoServerPrototype import TangoServerPrototype
 from TangoShotDumper import TangoShotDumper
+from TangoUtils import log_exception
 
 
 class TangoShotDumperServer(TangoServerPrototype, TangoShotDumper):
@@ -40,24 +41,18 @@ class TangoShotDumperServer(TangoServerPrototype, TangoShotDumper):
     def init_device(self):
         # init base class TangoServerPrototype self.set_config() will be called insight
         TangoServerPrototype.init_device(self)
-
-
-
-
-        try:
-            TangoShotDumper.__init__(self, self.config.file_name)
+        if self.get_state() ==  DevState.RUNNING:
             # add to servers list
             if self not in TangoShotDumperServer.device_list:
                 TangoShotDumperServer.device_list.append(self)
             #
-            self.set_state(DevState.RUNNING)
             print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
-        except:
-            self.set_state(DevState.FAULT)
-            self.log_exception('Exception in TangoShotDumperServer')
+        else:
+            self.logger.warning('Errors init device')
 
     def set_config(self):
         try:
+            # set_config for TangoServerPrototype part
             TangoServerPrototype.set_config(self)
             # set shot_number and short time from DB
             db = self.device_proxy.get_device_db()
@@ -72,165 +67,17 @@ class TangoShotDumperServer(TangoServerPrototype, TangoShotDumper):
             try:
                 value = float(pr['shot_time']['__value'][0])
             except:
-                value = 0
+                value = 0.0
             self.write_shot_time(value)
-            # init ShortDumper part TangoShotDumper.set_config() will be called insight
+            # init ShortDumper part
             TangoShotDumper.__init__(self, self.config.file_name)
-            # Restore devices
+            # set_config for TangoShotDumper part
             TangoShotDumper.set_config(self)
             return True
         except:
-            self.logger.info('Configuration error %s' % file_name)
+            log_exception('Configuration set error for %s', self.config.file_name)
             self.logger.debug('', exc_info=True)
             return False
-
-    def write_config(self, file_name=None):
-        try:
-            # self.config['shot_number'] = self.shot
-            self.config.write(file_name)
-            if file_name is None:
-                file_name = ''
-            else:
-                file_name = 'to ' + file_name
-            self.logger.debug('Configuration saved %s' % file_name)
-        except:
-            self.logger.info('Configuration save error %s' % file_name)
-            self.logger.debug('', exc_info=True)
-            return False
-
-    def activate(self):
-        n = 0
-        for item in self.dumper_devices:
-            try:
-                if item.activate():
-                    n += 1
-            except:
-                # self.server_device_list.remove(item)
-                self.logger.error("%s activation error", item)
-                self.logger.debug('', exc_info=True)
-        return n
-
-    def check_new_shot(self):
-        for item in self.dumper_devices:
-            try:
-                if item.new_shot():
-                    self.shot_number_value += 1
-                    self.write_shot_number(self.shot_number_value)
-                    self.write_shot_time(time.time())
-                    return True
-            except:
-                # self.device_list.remove(item)
-                self.logger.error("%s check for new shot", item)
-                self.logger.debug('', exc_info=True)
-        return False
-
-    @staticmethod
-    def date_time_stamp():
-        return datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-
-    @staticmethod
-    def time_stamp():
-        return datetime.datetime.today().strftime('%H:%M:%S')
-
-    @staticmethod
-    def output_dir_name():
-        ydf = datetime.datetime.today().strftime('%Y')
-        mdf = datetime.datetime.today().strftime('%Y-%m')
-        ddf = datetime.datetime.today().strftime('%Y-%m-%d')
-        folder = os.path.join(ydf, mdf, ddf)
-        return folder
-
-    def make_output_dir(self):
-        of = os.path.join(self.out_root_dir, self.output_dir_name())
-        try:
-            if not os.path.exists(of):
-                os.makedirs(of)
-                self.logger.debug("Output folder %s has been created", of)
-            self.out_dir = of
-            return True
-        except:
-            self.logger.debug("Can not create output folder %s", of)
-            self.out_dir = None
-            return False
-
-    def lock_output_dir(self, folder=None):
-        if folder is None:
-            folder = self.out_dir
-        if self.locked:
-            self.logger.warning("Unexpected lock")
-            self.zip_file.close()
-            self.log_file.close()
-            self.unlock_output_dir()
-        self.lock_file = open(os.path.join(folder, "lock.lock"), 'w+')
-        self.locked = True
-        self.logger.debug("Directory %s locked", folder)
-
-    def unlock_output_dir(self):
-        if self.lock_file is not None:
-            self.lock_file.close()
-            os.remove(self.lock_file.name)
-        self.locked = False
-        self.lock_file = None
-        self.logger.debug("Directory unlocked")
-
-    def open_log_file(self, folder: str = ''):
-        log_file = open(os.path.join(folder, self.get_log_file_name()), 'a')
-        return log_file
-
-    @staticmethod
-    def get_log_file_name():
-        file_name = datetime.datetime.today().strftime('%Y-%m-%d.log')
-        return file_name
-
-    @staticmethod
-    def open_zip_file(folder):
-        fn = datetime.datetime.today().strftime('%Y-%m-%d_%H%M%S.zip')
-        zip_file_name = os.path.join(folder, fn)
-        zip_file = zipfile.ZipFile(zip_file_name, 'a', compression=zipfile.ZIP_DEFLATED)
-        return zip_file
-
-    def process(self):
-        try:
-            # activate items in devices_list
-            if self.activate() <= 0:
-                self.logger.info("No active devices")
-                return
-            # check for new shot
-            if not self.check_new_shot():
-                return
-            # new shot - save signals
-            dts = self.date_time_stamp()
-            self.shot = self.shot_number_value
-            self.config['shot_dts'] = dts
-            print("\r\n%s New Shot %d" % (dts, self.shot_number_value))
-            self.make_output_dir()
-            self.lock_output_dir()
-            self.log_file = self.open_log_file(self.out_dir)
-            # Write date and time
-            self.log_file.write(dts)
-            # Write shot number
-            self.log_file.write('; Shot=%d; Shot_time=%s' % (self.shot_number_value, self.shot_time_value))
-            # Open zip file
-            self.zip_file = self.open_zip_file(self.out_dir)
-            for item in self.dumper_devices:
-                print("Saving from %s" % item.name)
-                try:
-                    item.save(self.log_file, self.zip_file)
-                except:
-                    self.logger.error("Exception saving %s" % str(item))
-                    self.logger.debug('', exc_info=True)
-            zfn = os.path.basename(self.zip_file.filename)
-            self.zip_file.close()
-            self.log_file.write('; File=%s\n' % zfn)
-            # self.log_file.write('\n')
-            self.log_file.close()
-            self.unlock_output_dir()
-            self.write_config()
-        except:
-            self.logger.error("Unexpected exception")
-            self.logger.debug('', exc_info=True)
-        print(TangoShotDumperServer.time_stamp(), "Waiting for next shot ...")
-        return
 
 
 def looping():
