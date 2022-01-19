@@ -232,24 +232,28 @@ class PrototypeDumperDevice:
         self.name = device_name
         self.active = False
         self.device = None
-        self.time = time.time()
-        self.activate()
+        self.time = 0.0
+        self.activation_timeout = 10.0
 
     def new_shot(self):
         return False
 
     def activate(self):
         if not self.active:
+            if self.device is None and (time.time() - self.time) < self.activation_timeout:
+                return False
             self.time = time.time()
             try:
                 self.device = tango.DeviceProxy(self.name)
                 self.active = True
                 self.logger.debug("%s has been activated", self.name)
+                return True
             except:
                 self.device = None
                 self.active = False
                 self.logger.warning("%s activation error", self.name)
                 self.logger.debug('', exc_info=True)
+                return False
         return self.active
 
     def save(self, log_file: IO, zip_file: zipfile.ZipFile, folder: str = None):

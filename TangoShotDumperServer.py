@@ -18,9 +18,10 @@ from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import Device, attribute, command, pipe, device_property
 
 from TangoServerPrototype import TangoServerPrototype
+from TangoShotDumper import TangoShotDumper
 
 
-class TangoShotDumperServer(TangoServerPrototype):
+class TangoShotDumperServer(TangoServerPrototype, TangoShotDumper):
     server_version = '1.1'
     server_name = 'Tango Shot Dumper Server'
 
@@ -37,19 +38,14 @@ class TangoShotDumperServer(TangoServerPrototype):
                           doc="Last shot time")
 
     def init_device(self):
-        # set defaults
-        self.log_file = None
-        self.zip_file = None
-        self.out_root_dir = '.\\data\\'
-        self.out_dir = None
-        self.locked = False
-        self.shot_number_value = 0
-        self.shot_time_value = 0.0
-        #
-        super().init_device()
-        #
-        self.set_state(DevState.INIT)
+        # init base class TangoServerPrototype self.set_config() will be called insight
+        TangoServerPrototype.init_device(self)
+
+
+
+
         try:
+            TangoShotDumper.__init__(self, self.config.file_name)
             # add to servers list
             if self not in TangoShotDumperServer.device_list:
                 TangoShotDumperServer.device_list.append(self)
@@ -60,38 +56,10 @@ class TangoShotDumperServer(TangoServerPrototype):
             self.set_state(DevState.FAULT)
             self.log_exception('Exception in TangoShotDumperServer')
 
-    def read_shot_number(self):
-        return self.shot_number_value
-
-    def write_shot_number(self, value):
-        self.shot_number_value = value
-        self.config['shot_number'] = value
-        db = self.device_proxy.get_device_db()
-        pr = db.get_device_attribute_property(self.get_name(), 'shot_number')
-        pr['shot_number']['__value'] = str(value)
-        db.put_device_attribute_property(self.get_name(), pr)
-
-    def read_shot_time(self):
-        return self.shot_time_value
-
-    def write_shot_time(self, value):
-        self.shot_time_value = value
-        self.config['shot_time'] = value
-        db = self.device_proxy.get_device_db()
-        pr = db.get_device_attribute_property(self.get_name(), 'shot_time')
-        pr['shot_time']['__value'] = str(value)
-        db.put_device_attribute_property(self.get_name(), pr)
-
     def set_config(self):
-        file_name = None
         try:
-            super().set_config()
-            file_name = self.config.file_name
-            if file_name is None:
-                file_name = ''
-            self.config["sleep"] = self.config.get("sleep", 1.0)
-            self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
-            # set shot_number
+            TangoServerPrototype.set_config(self)
+            # set shot_number and short time from DB
             db = self.device_proxy.get_device_db()
             pr = db.get_device_attribute_property(self.get_name(), 'shot_number')
             try:
@@ -106,27 +74,10 @@ class TangoShotDumperServer(TangoServerPrototype):
             except:
                 value = 0
             self.write_shot_time(value)
+            # init ShortDumper part TangoShotDumper.set_config() will be called insight
+            TangoShotDumper.__init__(self, self.config.file_name)
             # Restore devices
-            items = self.config.get("devices", [])
-            self.dumper_devices = []
-            if len(items) <= 0:
-                self.logger.error("No devices declared")
-                return False
-            for unit in items:
-                try:
-                    if 'exec' in unit:
-                        exec(unit["exec"])
-                    if 'eval' in unit:
-                        item = eval(unit["eval"])
-                        item.logger = self.logger
-                        self.dumper_devices.append(item)
-                        self.logger.info("%s has been added" % item.name)
-                    else:
-                        self.logger.info("No 'eval' option for %s" % unit)
-                except:
-                    self.logger.warning("Error in %s" % str(unit))
-                    self.logger.debug('', exc_info=True)
-            self.logger.debug('Configuration restored %s' % file_name)
+            TangoShotDumper.set_config(self)
             return True
         except:
             self.logger.info('Configuration error %s' % file_name)
@@ -285,7 +236,10 @@ class TangoShotDumperServer(TangoServerPrototype):
 def looping():
     t0 = time.time()
     for dev in TangoShotDumperServer.device_list:
-        time.sleep(dev.config['sleep'])
+        dt = time.time() - t0
+        if dt < dev.config['sleep']:
+            time.sleep(dev.config['sleep'] - dt)
+        t0 = time.time()
         try:
             dev.process()
             # msg = '%s processed' % dev.name

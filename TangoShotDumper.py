@@ -20,7 +20,7 @@ class TangoShotDumper:
     _version = '1.1'
     _name = 'Tango Shot Dumper'
 
-    def __init__(self):
+    def __init__(self, config_file_name=None):
         # default logger
         self.logger = config_logger()
         # set defaults
@@ -33,11 +33,14 @@ class TangoShotDumper:
         self.shot_number_value = 0
         self.shot_time_value = 0.0
         self.dumper_devices = []
-        try:
-            self.config_file_name = self.__class__.__name__ + '_' + sys.argv[1] + '.json'
-        except:
-            self.config_file_name = self.__class__.__name__ + '_' + '.json'
-        # read config from file
+        if config_file_name is None:
+            if len(sys.argv) > 1:
+                self.config_file_name = self.__class__.__name__ + '_' + sys.argv[1].strip() + '.json'
+            else:
+                self.config_file_name = self.__class__.__name__ + '.json'
+        else:
+            self.config_file_name = config_file_name
+            # read config from file
         self.config = Configuration(self.config_file_name,
                                     {"sleep": 1.0,
                                      'log_level': logging.DEBUG,
@@ -47,8 +50,6 @@ class TangoShotDumper:
                                      "devices": []
                                      }
                                     )
-        # set config
-        self.set_config()
 
     def read_shot_number(self):
         return self.shot_number_value
@@ -230,12 +231,13 @@ class TangoShotDumper:
             # Open zip file
             self.zip_file = self.open_zip_file(self.out_dir)
             for item in self.dumper_devices:
-                print("Saving from %s" % item.name)
-                try:
-                    item.save(self.log_file, self.zip_file)
-                except:
-                    self.logger.error("Exception saving %s %s", str(item), sys.exc_info()[1])
-                    self.logger.debug('', exc_info=True)
+                if item.active:
+                    print("Saving from %s" % item.name)
+                    try:
+                        item.save(self.log_file, self.zip_file)
+                    except:
+                        self.logger.error("Exception saving %s %s", str(item), sys.exc_info()[1])
+                        self.logger.debug('', exc_info=True)
             zfn = os.path.basename(self.zip_file.filename)
             self.zip_file.close()
             self.log_file.write('; File=%s\n' % zfn)
@@ -252,11 +254,12 @@ class TangoShotDumper:
 
 if __name__ == "__main__":
     tsd = TangoShotDumper()
-    t0 = time.time()
-    while True:
-        time.sleep(tsd.config['sleep'])
-        try:
-            tsd.process()
-        except:
-            tsd.logger.error("Exception %s", sys.exc_info()[1])
-            tsd.logger.debug('', exc_info=True)
+    if tsd.set_config():
+        t0 = time.time()
+        while True:
+            time.sleep(tsd.config['sleep'])
+            try:
+                tsd.process()
+            except:
+                tsd.logger.error("Exception %s", sys.exc_info()[1])
+                tsd.logger.debug('', exc_info=True)
