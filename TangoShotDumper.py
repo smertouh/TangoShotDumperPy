@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Stand alone version of Tango dumper
+Stand-alone version of Tango dumper
 A. L. Sanin, started 07.09.2021
 """
 import datetime
@@ -12,12 +12,8 @@ import sys
 import time
 import zipfile
 
-# from TangoUtils import config_logger, Configuration
-try:
-    from TangoUtils import config_logger, LOG_FORMAT_STRING_SHORT, log_exception, Configuration
-except:
-    sys.path.append('../TangoUtils')
-    from TangoUtils import config_logger, LOG_FORMAT_STRING_SHORT, log_exception, Configuration
+sys.path.append('../TangoUtils')
+from TangoUtils import config_logger, LOG_FORMAT_STRING_SHORT, log_exception, Configuration
 
 
 class TangoShotDumper:
@@ -42,7 +38,15 @@ class TangoShotDumper:
         except:
             self.config_file_name = self.__class__.__name__ + '_' + '.json'
         # read config from file
-        self.config = Configuration(self.config_file_name)
+        self.config = Configuration(self.config_file_name,
+                                    {"sleep": 1.0,
+                                     'log_level': logging.DEBUG,
+                                     "out_root_dir": '.\\data\\',
+                                     "shot_number": 1,
+                                     "shot_time": time.time(),
+                                     "devices": []
+                                     }
+                                    )
         # set config
         self.set_config()
 
@@ -70,33 +74,36 @@ class TangoShotDumper:
             self.logger.debug('Log level has been set to %s',
                               logging.getLevelName(self.logger.getEffectiveLevel()))
             self.config["sleep"] = self.config.get("sleep", 1.0)
+            self.config["out_root_dir"] = self.config.get("out_root_dir", '.\\data\\')
             self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
+            self.config["shot_number"] = self.config.get("shot_number", 1)
             self.write_shot_number(self.config.get("shot_number", 1))
+            self.config["shot_time"] = self.config.get("shot_time", time.time())
             self.write_shot_time(self.config.get("shot_time", time.time()))
             # Restore devices
-            items = self.config.get("devices", [])
+            devices = self.config.get("devices", [])
             self.dumper_devices = []
-            if len(items) <= 0:
+            if len(devices) <= 0:
                 self.logger.error("No devices declared")
                 return False
-            for unit in items:
+            for device in devices:
                 try:
-                    if 'exec' in unit:
-                        exec(unit["exec"])
-                    if 'eval' in unit:
-                        item = eval(unit["eval"])
+                    if 'exec' in device:
+                        exec(device["exec"])
+                    if 'eval' in device:
+                        item = eval(device["eval"])
                         item.logger = self.logger
                         self.dumper_devices.append(item)
                         self.logger.info("%s has been added" % item.name)
                     else:
-                        self.logger.info("No 'eval' option for %s" % unit)
+                        self.logger.info("No 'eval' option for %s" % device)
                 except:
-                    self.logger.warning("Error in %s" % str(unit))
+                    self.logger.warning("Device creation error in %s %s", str(device), sys.exc_info()[1])
                     self.logger.debug('', exc_info=True)
-            self.logger.debug('Configuration restored %s' % file_name)
+            self.logger.debug('%d devices has been configured', len(self.dumper_devices))
             return True
         except:
-            self.logger.info('Configuration error in %s %s', file_name, sys.exc_info()[1])
+            self.logger.info('Configuration set error in %s %s', file_name, sys.exc_info()[1])
             self.logger.debug('', exc_info=True)
             return False
 
@@ -227,7 +234,7 @@ class TangoShotDumper:
                 try:
                     item.save(self.log_file, self.zip_file)
                 except:
-                    self.logger.error("Exception saving %s %s" % (str(item), sys.exc_info()[1]))
+                    self.logger.error("Exception saving %s %s", str(item), sys.exc_info()[1])
                     self.logger.debug('', exc_info=True)
             zfn = os.path.basename(self.zip_file.filename)
             self.zip_file.close()
@@ -251,5 +258,5 @@ if __name__ == "__main__":
         try:
             tsd.process()
         except:
-            tsd.logger.error("Exception %s" % sys.exc_info()[1])
+            tsd.logger.error("Exception %s", sys.exc_info()[1])
             tsd.logger.debug('', exc_info=True)

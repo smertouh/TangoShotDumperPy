@@ -2,6 +2,8 @@
     "sleep": 1.0,
     "log_level": 20,
     "out_root_dir": "D:\\data\\",
+    "shot_number": 127,
+    "shot_time": 1642568537.772789,
     "devices": [
         {
             "exec": "from TangoAttribute import TangoAttribute",
@@ -16,7 +18,5 @@
             "eval": "AdlinkADC('binp/nbi/adc0', 'adc0')"
         }
     ],
-    "shot_number": 125,
-    "shot_time": 1630993744.5477858,
-    "shot_dts": "2021-09-07 12:49:04"
+    "shot_dts": "2022-01-19 12:02:17"
 }
