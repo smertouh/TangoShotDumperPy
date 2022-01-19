@@ -6,7 +6,6 @@ from typing import IO
 import numpy
 import tango
 
-from TangoShotDumperServer import TangoShotDumperServer
 from TangoUtils import config_logger
 
 
@@ -290,8 +289,7 @@ class PrototypeDumperDevice:
     def as_int(value):
         if isinstance(int, value):
             return value
-        value = str(value)
         try:
-            return int(value)
+            return int(str(value))
         except:
             return None
