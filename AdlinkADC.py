@@ -38,15 +38,15 @@ class AdlinkADC(PrototypeDumperDevice):
         attributes = self.device.get_attribute_list()
         for attr in attributes:
             if attr.startswith("chany"):
+                channel = PrototypeDumperDevice.Channel(self.device, attr)
+                channel.logger = self.logger
+                properties = channel.read_properties()
+                # save_data and save_log flags
+                sdf = self.as_boolean(properties.get("save_data", [False])[0])
+                slf = self.as_boolean(properties.get("save_log", [False])[0])
                 retry_count = 3
                 while retry_count > 0:
                     try:
-                        channel = PrototypeDumperDevice.Channel(self.device, attr)
-                        channel.logger = self.logger
-                        # Read save_data and save_log flags
-                        properties = channel.read_properties()
-                        sdf = self.as_boolean(properties.get("save_data", [False])[0])
-                        slf = self.as_boolean(properties.get("save_log", [False])[0])
                         # Save signal properties
                         if sdf or slf:
                             channel.save_properties(zip_file, folder)
@@ -64,6 +64,6 @@ class AdlinkADC(PrototypeDumperDevice):
                         self.logger.debug('', exc_info=True)
                         retry_count -= 1
                     if retry_count > 0:
-                        self.logger.debug("Retry reading %s" % self.name)
+                        self.logger.debug("Retries reading %s" % self.name)
                     if retry_count == 0:
                         self.logger.warning("Error reading %s" % self.name)

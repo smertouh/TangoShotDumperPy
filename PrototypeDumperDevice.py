@@ -12,11 +12,10 @@ from TangoUtils import config_logger, log_exception
 
 class PrototypeDumperDevice:
     class Channel:
-        def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i',
-                     ):
+        def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
             self.logger = config_logger()
             self.device = device
-            if type(channel) is int:
+            if isinstance(int, channel):
                 self.name = prefix + (format % channel)
             else:
                 self.name = str(channel)
