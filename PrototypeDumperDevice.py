@@ -1,3 +1,4 @@
+import sys
 import time
 import logging
 import zipfile
@@ -6,12 +7,13 @@ from typing import IO
 import numpy
 import tango
 
-from TangoUtils import config_logger
+from TangoUtils import config_logger, log_exception
 
 
 class PrototypeDumperDevice:
     class Channel:
-        def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
+        def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i',
+                     ):
             self.logger = config_logger()
             self.device = device
             if type(channel) is int:
@@ -186,7 +188,7 @@ class PrototypeDumperDevice:
                     n = len(self.y)
                     ys = 0.0
                     ns = 0.0
-                    for k in range(n-1):
+                    for k in range(n - 1):
                         ys += self.y[k]
                         ns += 1.0
                         if ns >= avg:
@@ -194,7 +196,7 @@ class PrototypeDumperDevice:
                             outbuf += s.replace(",", ".")
                             ys = 0.0
                             ns = 0.0
-                    ys += self.y[n-1]
+                    ys += self.y[n - 1]
                     ns += 1.0
                     s = fmt % (ys / ns)
                     outbuf += s.replace(",", ".")
@@ -209,7 +211,7 @@ class PrototypeDumperDevice:
                 xs = 0.0
                 ys = 0.0
                 ns = 0.0
-                for k in range(n-1):
+                for k in range(n - 1):
                     xs += self.x[k]
                     ys += self.y[k]
                     ns += 1.0
@@ -219,21 +221,23 @@ class PrototypeDumperDevice:
                         xs = 0.0
                         ys = 0.0
                         ns = 0.0
-                xs += self.x[n-1]
-                ys += self.y[n-1]
+                xs += self.x[n - 1]
+                ys += self.y[n - 1]
                 ns += 1.0
                 s = fmt % (xs / ns, ys / ns)
                 outbuf += s.replace(",", ".")
             zip_file.writestr(zip_entry, outbuf)
             self.logger.debug('%s Data saved to %s', self.file_name, zip_entry)
 
-    def __init__(self, device_name: str):
+    def __init__(self, device_name: str, reactivate_if_not_defined: bool = True):
         self.logger = config_logger()
         self.name = device_name
         self.active = False
         self.device = None
         self.time = 0.0
         self.activation_timeout = 10.0
+        self.defined_in_db = True
+        self.reactivate_if_not_defined = reactivate_if_not_defined
         self.activate()
 
     def new_shot(self):
@@ -244,17 +248,24 @@ class PrototypeDumperDevice:
             if self.device is None and (time.time() - self.time) < self.activation_timeout:
                 return False
             self.time = time.time()
-            try:
-                self.device = tango.DeviceProxy(self.name)
-                self.active = True
-                self.logger.debug("%s has been activated", self.name)
-                return True
-            except:
-                self.device = None
-                self.active = False
-                self.logger.warning("%s activation error", self.name)
-                self.logger.debug('', exc_info=True)
-                return False
+            if self.defined_in_db:
+                try:
+                    self.device = tango.DeviceProxy(self.name)
+                    self.active = True
+                    self.logger.debug("%s has been activated", self.name)
+                    return True
+                except:
+                    self.device = None
+                    self.active = False
+                    ex_type, ex_value, traceback = sys.exc_info()
+                    if ex_value.args[0].reason == 'DB_DeviceNotDefined':
+                        self.logger.error('Device %s is not defined in DB', self.name)
+                        if not self.reactivate_if_not_defined:
+                            self.defined_in_db = False
+                            self.logger.error('Dumper restart required to activate device %s', self.name)
+                    else:
+                        log_exception("%s activation error: ", self.name)
+            return False
         return self.active
 
     def save(self, log_file: IO, zip_file: zipfile.ZipFile, folder: str = None):
@@ -269,7 +280,7 @@ class PrototypeDumperDevice:
             if len(result) == 1:
                 result = result[0]
             return result
-            #return self.device.get_property(prop_name)[prop_name][0]
+            # return self.device.get_property(prop_name)[prop_name][0]
         except:
             return ''
 

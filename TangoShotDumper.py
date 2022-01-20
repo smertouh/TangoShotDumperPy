@@ -111,7 +111,7 @@ class TangoShotDumper:
     def write_config(self, file_name=None):
         try:
             self.config.write(file_name)
-            self.logger.debug('Configuration saved to %s', file_name)
+            self.logger.debug('Configuration saved to %s', self.config.file_name)
         except:
             self.logger.error('Configuration save to %s error %s', file_name, sys.exc_info()[1])
             self.logger.debug('', exc_info=True)
