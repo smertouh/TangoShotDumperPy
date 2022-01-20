@@ -1,9 +1,9 @@
 {
     "sleep": 1.0,
-    "log_level": 10,
+    "log_level": 20,
     "out_root_dir": "D:\\data\\",
-    "shot_number": 271,
-    "shot_time": 1642658518.3827233,
+    "shot_number": 295,
+    "shot_time": 1642659855.7852707,
     "devices": [
         {
             "exec": "from TangoAttribute import TangoAttribute",
@@ -15,8 +15,8 @@
         },
         {
             "exec": "from AdlinkADC import AdlinkADC",
-            "eval": "AdlinkADC('binp/nbi/adc0', 'adc0')"
+            "eval": "AdlinkADC('binp/nbi/adc0', 'adc0', reactivate_if_not_defined=False)"
         }
     ],
-    "shot_dts": "2022-01-20 13:01:58"
+    "shot_dts": "2022-01-20 13:24:15"
 }

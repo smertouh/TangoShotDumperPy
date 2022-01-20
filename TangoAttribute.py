@@ -2,8 +2,8 @@ from PrototypeDumperDevice import *
 
 
 class TangoAttribute(PrototypeDumperDevice):
-    def __init__(self, device_name, attribute_name, folder=None, force=True):
-        super().__init__(device_name)
+    def __init__(self, device_name, attribute_name, folder=None, force=True, **kwargs):
+        super().__init__(device_name, **kwargs)
         self.attribute_name = attribute_name
         self.folder = folder
         self.force = force

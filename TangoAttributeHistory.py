@@ -7,8 +7,8 @@ from TangoAttribute import TangoAttribute
 
 
 class TangoAttributeHistory(TangoAttribute):
-    def __init__(self, device_name, attribute_name, folder=None, delta_t=120.0):
-        super().__init__(device_name, attribute_name, folder, True)
+    def __init__(self, device_name, attribute_name, folder=None, delta_t=120.0, **kwargs):
+        super().__init__(device_name, attribute_name, folder, True, **kwargs)
         self.delta_t = delta_t
 
     def read_attribute(self):
