@@ -15,7 +15,7 @@ class PrototypeDumperDevice:
         def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
             self.logger = config_logger()
             self.device = device
-            if isinstance(int, channel):
+            if isinstance(channel, int):
                 self.name = prefix + (format % channel)
             else:
                 self.name = str(channel)
@@ -169,6 +169,7 @@ class PrototypeDumperDevice:
                 buf += '%s=%s\r\n' % (prop, properties[prop][0])
             zip_file.writestr(zip_entry, buf)
             self.logger.debug('%s Properties saved to %s', self.file_name, zip_entry)
+            return True
 
         def save_data(self, zip_file: zipfile.ZipFile, folder: str = ''):
             if self.y is None:

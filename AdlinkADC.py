@@ -44,24 +44,32 @@ class AdlinkADC(PrototypeDumperDevice):
                 # save_data and save_log flags
                 sdf = self.as_boolean(properties.get("save_data", [False])[0])
                 slf = self.as_boolean(properties.get("save_log", [False])[0])
+                properties_saved = False
+                log_saved = False
+                data_saved = False
                 retry_count = 3
                 while retry_count > 0:
                     try:
-                        # Save signal properties
                         if sdf or slf:
-                            channel.save_properties(zip_file, folder)
-                            channel.read_y()
-                            channel.read_x()
+                            if channel.y is None:
+                                channel.read_y()
+                            if channel.x is None:
+                                channel.read_x()
+                        # Save signal properties
+                        if sdf or slf and not properties_saved:
+                            if channel.save_properties(zip_file, folder):
+                                properties_saved = True
                         # Save log
-                        if slf:
+                        if slf and not log_saved:
                             channel.save_log(log_file)
+                            log_saved = True
                         # Save signal data
-                        if sdf:
+                        if sdf and not data_saved:
                             channel.save_data(zip_file, folder)
+                            data_saved = True
                         break
                     except:
-                        self.logger.warning("%s channel save exception" % self.name)
-                        self.logger.debug('', exc_info=True)
+                        log_exception("%s channel save exception", self.name)
                         retry_count -= 1
                     if retry_count > 0:
                         self.logger.debug("Retries reading %s" % self.name)
