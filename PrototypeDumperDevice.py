@@ -247,29 +247,29 @@ class PrototypeDumperDevice:
         return False
 
     def activate(self):
-        if not self.active:
-            if self.device is None and (time.time() - self.time) < self.activation_timeout:
-                return False
-            self.time = time.time()
-            if self.defined_in_db:
-                try:
-                    self.device = tango.DeviceProxy(self.name)
-                    self.active = True
-                    self.logger.debug("%s has been activated", self.name)
-                    return True
-                except:
-                    self.device = None
-                    self.active = False
-                    ex_type, ex_value, traceback = sys.exc_info()
-                    if ex_value.args[0].reason == 'DB_DeviceNotDefined':
-                        self.logger.error('Device %s is not defined in DB', self.name)
-                        if not self.reactivate_if_not_defined:
-                            self.defined_in_db = False
-                            self.logger.error('Dumper restart required to activate device %s', self.name)
-                    else:
-                        log_exception("%s activation error: ", self.name)
+        if self.active:
+            return True
+        if self.device is None and (time.time() - self.time) < self.activation_timeout:
             return False
-        return self.active
+        self.time = time.time()
+        if self.defined_in_db:
+            try:
+                self.device = tango.DeviceProxy(self.name)
+                self.active = True
+                self.logger.debug("%s has been activated", self.name)
+                return True
+            except:
+                self.device = None
+                self.active = False
+                ex_type, ex_value, traceback = sys.exc_info()
+                if ex_value.args[0].reason == 'DB_DeviceNotDefined':
+                    self.logger.error('Device %s is not defined in DB', self.name)
+                    if not self.reactivate_if_not_defined:
+                        self.defined_in_db = False
+                        self.logger.error('Dumper restart required to activate device %s', self.name)
+                else:
+                    log_exception("%s activation error: ", self.name)
+        return False
 
     def save(self, log_file: IO, zip_file: zipfile.ZipFile, folder: str = None):
         raise NotImplemented()
