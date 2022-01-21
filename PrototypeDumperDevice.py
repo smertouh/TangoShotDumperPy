@@ -11,6 +11,9 @@ from TangoUtils import config_logger, log_exception
 
 
 class PrototypeDumperDevice:
+    TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
+    FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
+
     class Channel:
         def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
             self.logger = config_logger()
@@ -288,9 +291,6 @@ class PrototypeDumperDevice:
         # returns dictionary with device properties
         names = self.device.get_property_list(filter)
         return self.device.get_property(names)
-
-    TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
-    FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
 
     @staticmethod
     def as_boolean(value):
