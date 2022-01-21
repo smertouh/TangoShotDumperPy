@@ -76,7 +76,6 @@ class TangoShotDumperServer(TangoServerPrototype, TangoShotDumper):
             return True
         except:
             log_exception('Configuration set error for %s', self.config.file_name)
-            self.logger.debug('', exc_info=True)
             return False
 
 
