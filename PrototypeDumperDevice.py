@@ -303,8 +303,6 @@ class PrototypeDumperDevice:
 
     @staticmethod
     def as_int(value):
-        if isinstance(int, value):
-            return value
         try:
             return int(str(value))
         except:
