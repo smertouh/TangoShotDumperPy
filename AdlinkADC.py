@@ -27,6 +27,8 @@ class AdlinkADC(PrototypeDumperDevice):
 
     def new_shot(self):
         ns = self.read_shot()
+        if ns < 0:
+            return False
         if self.shot == ns:
             return False
         self.shot = ns
