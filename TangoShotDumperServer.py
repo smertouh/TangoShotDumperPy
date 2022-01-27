@@ -19,6 +19,7 @@ from tango.server import Device, attribute, command, pipe, device_property
 
 from TangoServerPrototype import TangoServerPrototype
 from TangoShotDumper import TangoShotDumper
+sys.path.append('../TangoUtils')
 from TangoUtils import log_exception
 
 
