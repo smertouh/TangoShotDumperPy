@@ -22,7 +22,7 @@ class TangoShotDumper:
 
     def __init__(self, config_file_name=None):
         # default logger
-        self.logger = config_logger()
+        self.logger = config_logger(format_string=LOG_FORMAT_STRING_SHORT)
         # set defaults
         self.log_file = None
         self.zip_file = None

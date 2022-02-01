@@ -6,6 +6,7 @@ from typing import IO
 
 import numpy
 import tango
+from tango import DevFailed
 
 from TangoUtils import config_logger, log_exception
 
@@ -258,7 +259,7 @@ class PrototypeDumperDevice:
                 self.active = True
                 self.logger.debug("%s has been activated", self.name)
                 return True
-            except:
+            except DevFailed:
                 self.device = None
                 self.active = False
                 ex_type, ex_value, traceback = sys.exc_info()
@@ -269,6 +270,8 @@ class PrototypeDumperDevice:
                         self.logger.error('Dumper restart required to activate device %s', self.name)
                 else:
                     log_exception("%s activation error: ", self.name)
+            except:
+                log_exception("%s activation error: ", self.name)
         return False
 
     def save(self, log_file: IO, zip_file: zipfile.ZipFile, folder: str = None):
