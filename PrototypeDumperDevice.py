@@ -253,7 +253,7 @@ class PrototypeDumperDevice:
         if self.device is None and (time.time() - self.time) < self.activation_timeout:
             return False
         self.time = time.time()
-        if self.defined_in_db:
+        if self.reactivate_if_not_defined or self.defined_in_db:
             try:
                 self.device = tango.DeviceProxy(self.name)
                 self.active = True
