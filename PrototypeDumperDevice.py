@@ -263,7 +263,7 @@ class PrototypeDumperDevice:
                 self.device = None
                 self.active = False
                 ex_type, ex_value, traceback = sys.exc_info()
-                if ex_value.args[0].reason == 'DB_DeviceNotDefined':
+                if 'DeviceNotDefined' in ex_value.args[0].reason:
                     self.logger.error('Device %s is not defined in DB', self.name)
                     if not self.reactivate_if_not_defined:
                         self.defined_in_db = False
