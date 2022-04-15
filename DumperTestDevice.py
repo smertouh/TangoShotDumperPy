@@ -45,10 +45,13 @@ class DumperTestDevice(PrototypeDumperDevice):
         if self.points > 0:
             t0 = time.time()
             signal = self.Channel(None, 1) # PrototypeDumperDevice.Channel()
+            signal.name = 'test_device_%d' % self.n
             signal.x = numpy.linspace(0.0, 2.0 * numpy.pi, self.points)
             signal.y = numpy.sin(signal.x)
+            signal.properties = {'label': ['Point number'], 'unit': ['a.u.']}
             signal.save_data(zip_file, folder)
             self.logger.debug('dT = %s', time.time() - t0)
+            # signal.save_properties(zip_file, folder)
             # buf = ""
             # for k in range(self.points):
             #     w = 2.0 * numpy.pi * float(k) / (self.points -1)
