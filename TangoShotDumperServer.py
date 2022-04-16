@@ -90,6 +90,7 @@ class TangoShotDumperServer(TangoServerPrototype):
         db.put_device_attribute_property(self.get_name(), pr)
 
     def set_config(self):
+        file_name = ''
         try:
             super().set_config()
             file_name = self.config.file_name

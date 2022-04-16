@@ -10,6 +10,84 @@ from TangoShotDumperServer import TangoShotDumperServer
 from TangoUtils import config_logger
 
 
+def convert_to_buf(x, y=None, avgc=1, fmt='%f; %f'):
+    outbuf = ''
+    if y is None:
+        # save only y values
+        y = x
+        if y is None or x is None:
+            return outbuf
+        if len(y) <= 0 or len(x) <= 0:
+            return outbuf
+        fmt = fmt.split(';')[0]
+        fmtcrlf = fmt + '\r\n'
+        try:
+            n = len(y)
+            ys = 0.0
+            ns = 0.0
+            for k in range(n - 1):
+                ys += y[k]
+                ns += 1.0
+                if ns >= avgc:
+                    s = fmtcrlf % (ys / ns)
+                    outbuf += s.replace(",", ".")
+                    ys = 0.0
+                    ns = 0.0
+            ys += y[n - 1]
+            ns += 1.0
+            s = fmt % (ys / ns)
+            outbuf += s.replace(",", ".")
+        except:
+            s = fmt % y
+            outbuf += s.replace(",", ".")
+    else:
+        # save "x; y" pairs
+        if y is None or x is None:
+            return outbuf
+        if len(y) <= 0 or len(x) <= 0:
+            return outbuf
+        fmtcrlf = fmt + '\r\n'
+        n = min(len(y), len(x))
+        xs = 0.0
+        ys = 0.0
+        ns = 0.0
+        for k in range(n - 1):
+            xs += x[k]
+            ys += y[k]
+            ns += 1.0
+            if ns >= avgc:
+                s = fmtcrlf % (xs / ns, ys / ns)
+                outbuf += s.replace(",", ".")
+                xs = 0.0
+                ys = 0.0
+                ns = 0.0
+        xs += x[n - 1]
+        ys += y[n - 1]
+        ns += 1.0
+        s = fmt % (xs / ns, ys / ns)
+        outbuf += s.replace(",", ".")
+    return outbuf
+
+
+def convert_to_buf_numpy(x: numpy.ndarray, y=None, avgc=1, fmt='%f; %f') -> str:
+    if not isinstance(x, numpy.ndarray):
+        return ''
+    if y is not None and not isinstance(y, numpy.ndarray):
+        return ''
+    n = len(x)
+    if y is not None:
+        n = min(n, len(y))
+    avgc = int(avgc)
+    d = int(n / avgc)
+    r = int(n % avgc)
+    a = x[:-r-1].reshape((avgc, d))
+    b = a.mean(1)
+    if y is not None:
+        a = y[:-r-1].reshape((avgc, d))
+        b = numpy.stack([b, a.mean(1)])
+    return numpy.array2string(b)
+
+
 class PrototypeDumperDevice:
     class Channel:
         def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
