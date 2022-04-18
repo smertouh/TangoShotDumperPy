@@ -2,13 +2,13 @@
     "sleep": 1.0,
     "log_level": 10,
     "out_root_dir": "D:\\data\\",
-    "shot_number": 174,
-    "shot_time": 1650013437.033215,
+    "shot_number": 258,
+    "shot_time": 1650259499.4874218,
     "devices": [
         {
             "exec": "from DumperTestDevice import DumperTestDevice",
-            "eval": "DumperTestDevice(5.0, 10000)"
+            "eval": "DumperTestDevice(5.0, 100000)"
         }
     ],
-    "shot_dts": "2022-04-15 16:03:57"
+    "shot_dts": "2022-04-18 12:24:59"
 }
