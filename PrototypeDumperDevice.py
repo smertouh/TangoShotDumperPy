@@ -80,12 +80,14 @@ def convert_to_buf_numpy(x: numpy.ndarray, y=None, avgc=1, fmt='%f; %f') -> str:
     avgc = int(avgc)
     d = int(n / avgc)
     r = int(n % avgc)
-    a = x[:-r-1].reshape((avgc, d))
+    print(d,n,r,avgc)
+    a = x[:n-r].reshape((d, avgc))
     b = a.mean(1)
     if y is not None:
-        a = y[:-r-1].reshape((avgc, d))
-        b = numpy.stack([b, a.mean(1)])
-    return numpy.array2string(b)
+        a = y[:n-r].reshape((d, avgc))
+        b = numpy.vstack((b, a.mean(1))).transpose()
+        return numpy.array2string(b, max_line_width=999)
+    return numpy.array2string(b, max_line_width=999)
 
 
 class PrototypeDumperDevice:
