@@ -217,7 +217,7 @@ class PrototypeDumperDevice:
                 avg = int(avg)
                 ynps = self.y[:n-r].reshape((d, avg)).mean(1)
                 xnps = self.x[:n-r].reshape((d, avg)).mean(1)
-                z = numpy.vstack((xnps, ynps)).T
+                #z = numpy.vstack((xnps, ynps)).T
                 # outbuf = numpy.array2string(z, separator='; ', threshold=1000000).replace(']', '').replace('[', '').replace(';\n ', '\r\n')
                 # outbuf = numpy.array2string(z, separator='; ', threshold=1000000)
                 # xs = 0.0
@@ -238,7 +238,7 @@ class PrototypeDumperDevice:
                 # ns += 1.0
                 # s = fmt % (xs / ns, ys / ns)
                 # outbuf += s.replace(",", ".")
-                outbuf = '\r\n'.join(('; '.join((str(x) for x in y)) for y in z))
+                # outbuf = '\r\n'.join(('; '.join((str(x) for x in y)) for y in z))
             zip_file.writestr(zip_entry, outbuf)
             self.logger.debug('%s Data saved to %s', self.file_name, zip_entry)
 
