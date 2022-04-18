@@ -4,7 +4,9 @@ from PrototypeDumperDevice import *
 class AdlinkADC(PrototypeDumperDevice):
     def __init__(self, device_name='binp/nbi/adc0', folder="ADC_0", **kwargs):
         super().__init__(device_name, **kwargs)
+        self.shot_time = 1.0
         self.folder = folder
+        self.shot = -7
         self.shot = self.read_shot()
 
     def read_shot(self):

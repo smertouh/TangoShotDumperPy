@@ -8,6 +8,7 @@ import numpy
 import tango
 from tango import DevFailed
 
+sys.path.append('../TangoUtils')
 from TangoUtils import config_logger, log_exception
 
 
@@ -257,6 +258,7 @@ class PrototypeDumperDevice:
             try:
                 self.device = tango.DeviceProxy(self.name)
                 self.active = True
+                self.defined_in_db = True
                 self.logger.debug("%s has been activated", self.name)
                 return True
             except DevFailed:
