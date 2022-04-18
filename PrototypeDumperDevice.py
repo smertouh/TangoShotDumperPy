@@ -213,24 +213,33 @@ class PrototypeDumperDevice:
                 fmt = '%f; %f'
                 fmtcrlf = fmt + '\r\n'
                 n = min(len(self.x), len(self.x))
-                xs = 0.0
-                ys = 0.0
-                ns = 0.0
-                for k in range(n - 1):
-                    xs += self.x[k]
-                    ys += self.y[k]
-                    ns += 1.0
-                    if ns >= avg:
-                        s = fmtcrlf % (xs / ns, ys / ns)
-                        outbuf += s.replace(",", ".")
-                        xs = 0.0
-                        ys = 0.0
-                        ns = 0.0
-                xs += self.x[n - 1]
-                ys += self.y[n - 1]
-                ns += 1.0
-                s = fmt % (xs / ns, ys / ns)
-                outbuf += s.replace(",", ".")
+                r = int(n % avg)
+                d = int(n / avg)
+                avg = int(avg)
+                ynps = self.y[:n-r].reshape((d, avg)).mean(1)
+                xnps = self.x[:n-r].reshape((d, avg)).mean(1)
+                #z = numpy.vstack((xnps, ynps)).T
+                # outbuf = numpy.array2string(z, separator='; ', threshold=1000000).replace(']', '').replace('[', '').replace(';\n ', '\r\n')
+                # outbuf = numpy.array2string(z, separator='; ', threshold=1000000)
+                # xs = 0.0
+                # ys = 0.0
+                # ns = 0.0
+                # for k in range(n - 1):
+                #     xs += self.x[k]
+                #     ys += self.y[k]
+                #     ns += 1.0
+                #     if ns >= avg:
+                #         s = fmtcrlf % (xs / ns, ys / ns)
+                #         outbuf += s.replace(",", ".")
+                #         xs = 0.0
+                #         ys = 0.0
+                #         ns = 0.0
+                # xs += self.x[n - 1]
+                # ys += self.y[n - 1]
+                # ns += 1.0
+                # s = fmt % (xs / ns, ys / ns)
+                # outbuf += s.replace(",", ".")
+                # outbuf = '\r\n'.join(('; '.join((str(x) for x in y)) for y in z))
             zip_file.writestr(zip_entry, outbuf)
             self.logger.debug('%s Data saved to %s', self.file_name, zip_entry)
 
