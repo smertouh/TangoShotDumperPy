@@ -7,7 +7,6 @@ class TangoAttribute(PrototypeDumperDevice):
         self.attribute_name = attribute_name
         self.folder = folder
         self.force = force
-        # self.retry_count = 3
         self.channel = PrototypeDumperDevice.Channel(self.device, attribute_name)
         self.channel.logger = self.logger
 
@@ -41,7 +40,6 @@ class TangoAttribute(PrototypeDumperDevice):
     def read_attribute(self):
         self.channel.read_y()
         if self.channel.y_attr.data_format == tango._tango.AttrDataFormat.IMAGE:
-            # self.logger.debug("IMAGE attribute %s" % self.attribute_name)
             self.channel.x = self.channel.y_attr.value[:, 0]
             self.channel.y = self.channel.y_attr.value[:, 1]
         elif self.channel.y_attr.data_format != tango._tango.AttrDataFormat.SCALAR:

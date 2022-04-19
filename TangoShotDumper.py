@@ -13,7 +13,8 @@ import time
 import zipfile
 
 sys.path.append('../TangoUtils')
-from TangoUtils import config_logger, LOG_FORMAT_STRING_SHORT, log_exception, Configuration
+from Configuration import Configuration
+from config_logger import config_logger, LOG_FORMAT_STRING_SHORT
 
 
 class TangoShotDumper:
@@ -21,18 +22,13 @@ class TangoShotDumper:
     _name = 'Tango Shot Dumper'
 
     def __init__(self, config_file_name=None):
-        # default logger
         self.logger = config_logger(format_string=LOG_FORMAT_STRING_SHORT)
         # set defaults
         self.log_file = None
         self.zip_file = None
-        self.out_root_dir = '.\\data\\'
         self.out_dir = None
         self.locked = False
         self.lock_file = None
-        self.shot_number_value = 0
-        self.shot_time_value = 0.0
-        self.dumper_devices = []
         if config_file_name is None:
             if len(sys.argv) > 1:
                 self.config_file_name = self.__class__.__name__ + '_' + sys.argv[1].strip() + '.json'
@@ -40,16 +36,17 @@ class TangoShotDumper:
                 self.config_file_name = self.__class__.__name__ + '.json'
         else:
             self.config_file_name = config_file_name
-            # read config from file
+        # default config
         self.config = Configuration(self.config_file_name,
-                                    {"sleep": 1.0,
-                                     'log_level': logging.DEBUG,
-                                     "out_root_dir": '.\\data\\',
-                                     "shot_number": 1,
-                                     "shot_time": time.time(),
-                                     "devices": []
+                                    {"sleep": 1.0, 'log_level': logging.DEBUG, "out_root_dir": '.\\data\\',
+                                     "shot_number": 1, "shot_time": 0.0, "devices": []
                                      }
                                     )
+        self.out_root_dir = self.config.get("out_root_dir")
+        self.shot_number_value = self.config.get("shot_number")
+        self.shot_time_value = self.config.get("shot_time")
+        self.dumper_devices = []
+        self.logger.setLevel(self.config.get("log_level"))
 
     def read_shot_number(self):
         return self.shot_number_value
@@ -61,7 +58,9 @@ class TangoShotDumper:
     def read_shot_time(self):
         return self.shot_time_value
 
-    def write_shot_time(self, value):
+    def write_shot_time(self, value=None):
+        if value is None:
+            value = time.time()
         self.shot_time_value = value
         self.config['shot_time'] = value
 
@@ -104,7 +103,7 @@ class TangoShotDumper:
             self.logger.debug('%d devices has been configured', len(self.dumper_devices))
             return True
         except:
-            self.logger.info('Configuration set error in %s %s', file_name, sys.exc_info()[1])
+            self.logger.warning('Configuration set error in %s %s', file_name, sys.exc_info()[1])
             self.logger.debug('', exc_info=True)
             return False
 

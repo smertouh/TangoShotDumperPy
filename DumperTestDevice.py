@@ -8,7 +8,7 @@ from PrototypeDumperDevice import *
 class DumperTestDevice(PrototypeDumperDevice):
     n = 0
 
-    def __init__(self, delta_t=-1.0, points=0, folder='DumperTest'):
+    def __init__(self, delta_t=-1.0, points=0, folder='DumperTest', properties=None):
         super().__init__('test_device')
         self.n = DumperTestDevice.n
         self.name = 'TestDevice_%d' % self.n
@@ -16,6 +16,10 @@ class DumperTestDevice(PrototypeDumperDevice):
         self.delta_t = delta_t
         self.points = points
         self.folder = folder
+        if properties is None:
+            self.properties = {'name': ['test_device_%d' % self.n], 'label': ['Point number'], 'unit': ['a.u.']}
+        else:
+            self.properties = properties
         DumperTestDevice.n += 1
 
     def __str__(self):
@@ -44,13 +48,15 @@ class DumperTestDevice(PrototypeDumperDevice):
         print('    %s = %f' % (self.name, self.time))
         if self.points > 0:
             t0 = time.time()
-            signal = self.Channel(None, 1) # PrototypeDumperDevice.Channel()
+            signal = self.Channel(None, 1)  # PrototypeDumperDevice.Channel()
             signal.name = 'test_device_%d' % self.n
             signal.x = numpy.linspace(0.0, 2.0 * numpy.pi, self.points)
             signal.y = numpy.sin(signal.x)
-            signal.properties = {'label': ['Point number'], 'unit': ['a.u.']}
+            # signal.properties = self.properties
+            # signal.properties['save_numpy'] = ['1']
             signal.save_data(zip_file, folder)
-            self.logger.debug('dT = %s', time.time() - t0)
+            # self.logger.debug('dT = %s', time.time() - t0)
+            # signal.save_properties(zip_file, folder)
             # signal.save_properties(zip_file, folder)
             # buf = ""
             # for k in range(self.points):

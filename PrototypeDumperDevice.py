@@ -11,13 +11,14 @@ from tango import DevFailed
 sys.path.append('../TangoUtils')
 from TangoUtils import config_logger, log_exception
 
+TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
+FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
+
 
 class PrototypeDumperDevice:
-    TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
-    FALSE_VALUES = ('false', 'off', '0', 'n', 'no')
 
     class Channel:
-        def __init__(self, device: tango.DeviceProxy, channel, prefix='chany', format='%03i'):
+        def __init__(self, device, channel, prefix='chany', format='%03i'):
             self.logger = config_logger()
             self.device = device
             if isinstance(channel, int):
@@ -184,7 +185,9 @@ class PrototypeDumperDevice:
                 folder += '/'
             zip_entry = folder + self.file_name + ".txt"
             avg = int(self.read_properties().get("save_avg", ['1'])[0])
+            # save_as_numpy = self.properties.get('save_numpy',['0'])[0] == '1'
             outbuf = ''
+            t0 = time.time()
             if self.x is None:
                 # save only y values
                 fmt = '%f'
@@ -193,7 +196,7 @@ class PrototypeDumperDevice:
                     n = len(self.y)
                     ys = 0.0
                     ns = 0.0
-                    for k in range(n - 1):
+                    for k in range(n - 2):
                         ys += self.y[k]
                         ns += 1.0
                         if ns >= avg:
@@ -212,35 +215,36 @@ class PrototypeDumperDevice:
                 # save "x; y" pairs
                 fmt = '%f; %f'
                 fmtcrlf = fmt + '\r\n'
-                n = min(len(self.x), len(self.x))
-                r = int(n % avg)
-                d = int(n / avg)
-                avg = int(avg)
-                ynps = self.y[:n-r].reshape((d, avg)).mean(1)
-                xnps = self.x[:n-r].reshape((d, avg)).mean(1)
-                #z = numpy.vstack((xnps, ynps)).T
-                # outbuf = numpy.array2string(z, separator='; ', threshold=1000000).replace(']', '').replace('[', '').replace(';\n ', '\r\n')
-                # outbuf = numpy.array2string(z, separator='; ', threshold=1000000)
-                # xs = 0.0
-                # ys = 0.0
-                # ns = 0.0
-                # for k in range(n - 1):
-                #     xs += self.x[k]
-                #     ys += self.y[k]
-                #     ns += 1.0
-                #     if ns >= avg:
-                #         s = fmtcrlf % (xs / ns, ys / ns)
-                #         outbuf += s.replace(",", ".")
-                #         xs = 0.0
-                #         ys = 0.0
-                #         ns = 0.0
-                # xs += self.x[n - 1]
-                # ys += self.y[n - 1]
-                # ns += 1.0
-                # s = fmt % (xs / ns, ys / ns)
-                # outbuf += s.replace(",", ".")
-                # outbuf = '\r\n'.join(('; '.join((str(x) for x in y)) for y in z))
+                n = min(len(self.x), len(self.y))
+                # r = int(n % avg)
+                # d = int(n / avg)
+                # avg = int(avg)
+                # ynps = self.y[:n-r].reshape((d, avg)).mean(1)
+                # xnps = self.x[:n-r].reshape((d, avg)).mean(1)
+                # z = numpy.vstack((xnps, ynps)).T
+                xs = 0.0
+                ys = 0.0
+                ns = 0.0
+                for k in range(n - 2):
+                    xs += self.x[k]
+                    ys += self.y[k]
+                    ns += 1.0
+                    if ns >= avg:
+                        s = fmtcrlf % (xs / ns, ys / ns)
+                        outbuf += s.replace(",", ".")
+                        xs = 0.0
+                        ys = 0.0
+                        ns = 0.0
+                xs += self.x[n - 1]
+                ys += self.y[n - 1]
+                ns += 1.0
+                s = fmt % (xs / ns, ys / ns)
+                outbuf += s.replace(",", ".")
+            # self.logger.debug('dT = %s', time.time() - t0)
             zip_file.writestr(zip_entry, outbuf)
+            # self.logger.debug('dT = %s', time.time() - t0)
+            # zip_file.writestr(zip_entry.replace('.txt', '.npy'), z.tobytes())
+            # self.logger.debug('dT = %s', time.time() - t0)
             self.logger.debug('%s Data saved to %s', self.file_name, zip_entry)
 
     def __init__(self, device_name: str, reactivate_if_not_defined: bool = True):
