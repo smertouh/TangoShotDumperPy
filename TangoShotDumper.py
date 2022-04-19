@@ -14,7 +14,7 @@ import zipfile
 
 sys.path.append('../TangoUtils')
 from Configuration import Configuration
-from config_logger import config_logger, LOG_FORMAT_STRING_SHORT
+from config_logger import *
 
 
 class TangoShotDumper:
@@ -45,8 +45,7 @@ class TangoShotDumper:
         self.out_root_dir = self.config.get("out_root_dir")
         self.shot_number_value = self.config.get("shot_number")
         self.shot_time_value = self.config.get("shot_time")
-        self.dumper_devices = []
-        self.logger.setLevel(self.config.get("log_level"))
+        self.dumper_items = []
 
     def read_shot_number(self):
         return self.shot_number_value
@@ -74,15 +73,12 @@ class TangoShotDumper:
             self.logger.debug('Log level has been set to %s',
                               logging.getLevelName(self.logger.getEffectiveLevel()))
             self.config["sleep"] = self.config.get("sleep", 1.0)
-            self.config["out_root_dir"] = self.config.get("out_root_dir", '.\\data\\')
             self.out_root_dir = self.config.get("out_root_dir", '.\\data\\')
-            self.config["shot_number"] = self.config.get("shot_number", 1)
             self.write_shot_number(self.config.get("shot_number", 1))
-            self.config["shot_time"] = self.config.get("shot_time", time.time())
             self.write_shot_time(self.config.get("shot_time", time.time()))
             # Restore devices
             devices = self.config.get("devices", [])
-            self.dumper_devices = []
+            self.dumper_items = []
             if len(devices) <= 0:
                 self.logger.error("No devices declared")
                 return False
@@ -93,43 +89,43 @@ class TangoShotDumper:
                     if 'eval' in device:
                         item = eval(device["eval"])
                         item.logger = self.logger
-                        self.dumper_devices.append(item)
+                        self.dumper_items.append(item)
                         self.logger.info("%s has been added" % item.name)
                     else:
                         self.logger.info("No 'eval' option for %s" % device)
                 except:
-                    self.logger.warning("Device creation error in %s %s", str(device), sys.exc_info()[1])
-                    self.logger.debug('', exc_info=True)
-            self.logger.debug('%d devices has been configured', len(self.dumper_devices))
-            return True
+                    log_exception(self, "Device creation error in %s", str(device), level=logging.WARNING)
+            if len(self.dumper_items) > 0:
+                self.logger.debug('%d dumper devices has been configured', len(self.dumper_items))
+                return True
+            else:
+                self.logger.warning('No dumper devices has been configured')
+                return False
         except:
-            self.logger.warning('Configuration set error in %s %s', file_name, sys.exc_info()[1])
-            self.logger.debug('', exc_info=True)
+            log_exception(self, 'Configuration set error for %s', file_name, level=logging.WARNING)
             return False
 
     def write_config(self, file_name=None):
         try:
             self.config.write(file_name)
             self.logger.debug('Configuration saved to %s', self.config.file_name)
+            return True
         except:
-            self.logger.error('Configuration save to %s error %s', file_name, sys.exc_info()[1])
-            self.logger.debug('', exc_info=True)
+            log_exception(self, 'Configuration save error to %s', file_name)
             return False
 
     def activate(self):
         n = 0
-        for item in self.dumper_devices:
+        for item in self.dumper_items:
             try:
                 if item.activate():
                     n += 1
             except:
-                # self.server_device_list.remove(item)
-                self.logger.error("%s activation error %s", item, sys.exc_info()[1])
-                self.logger.debug('', exc_info=True)
+                log_exception(self, "%s activation error", item)
         return n
 
     def check_new_shot(self):
-        for item in self.dumper_devices:
+        for item in self.dumper_items:
             try:
                 if item.new_shot():
                     self.shot_number_value += 1
@@ -137,9 +133,7 @@ class TangoShotDumper:
                     self.write_shot_time(time.time())
                     return True
             except:
-                # self.device_list.remove(item)
-                self.logger.error("Error %s check for new shot %s", item, sys.exc_info()[1])
-                self.logger.debug('', exc_info=True)
+                log_exception(self, "Error checking new shot for %s", item)
         return False
 
     @staticmethod
@@ -209,7 +203,7 @@ class TangoShotDumper:
 
     def process(self):
         try:
-            # activate items in devices_list
+            # activate items in self.dumper_items
             if self.activate() <= 0:
                 self.logger.info("No active devices")
                 return
@@ -229,24 +223,21 @@ class TangoShotDumper:
             self.log_file.write('; Shot=%d; Shot_time=%s' % (self.shot_number_value, self.shot_time_value))
             # Open zip file
             self.zip_file = self.open_zip_file(self.out_dir)
-            for item in self.dumper_devices:
+            for item in self.dumper_items:
                 if item.active:
                     print("Saving from %s" % item.name)
                     try:
                         item.save(self.log_file, self.zip_file)
                     except:
-                        self.logger.error("Exception saving %s %s", str(item), sys.exc_info()[1])
-                        self.logger.debug('', exc_info=True)
+                        log_exception(self, "Exception saving %s", str(item))
             zfn = os.path.basename(self.zip_file.filename)
             self.zip_file.close()
             self.log_file.write('; File=%s\n' % zfn)
-            # self.log_file.write('\n')
             self.log_file.close()
             self.unlock_output_dir()
             self.write_config()
         except:
-            self.logger.error("Unexpected exception %s" % sys.exc_info()[1])
-            self.logger.debug('', exc_info=True)
+            log_exception(self, "Unexpected exception")
         print(self.time_stamp(), "Waiting for next shot ...")
         return
 
@@ -260,5 +251,4 @@ if __name__ == "__main__":
             try:
                 tsd.process()
             except:
-                tsd.logger.error("Exception %s", sys.exc_info()[1])
-                tsd.logger.debug('', exc_info=True)
+                log_exception(tsd, "%s Process exception", tsd)
