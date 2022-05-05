@@ -17,9 +17,10 @@ import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState
 from tango.server import Device, attribute, command, pipe, device_property
 
-from TangoServerPrototype import TangoServerPrototype
+
 from TangoShotDumper import TangoShotDumper
 sys.path.append('../TangoUtils')
+from TangoServerPrototype import TangoServerPrototype
 from TangoUtils import log_exception
 
 
